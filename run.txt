@@ -1,0 +1,1 @@
+dotnet run --project src/QuadWeb/QuadWeb.csproj --urls "http://localhost:5200"
