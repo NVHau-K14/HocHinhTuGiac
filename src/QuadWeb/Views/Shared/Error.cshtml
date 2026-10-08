@@ -1,0 +1,26 @@
+@model QuadWeb.Models.ErrorViewModel
+@{
+    ViewData["Title"] = Model?.Title ?? "Thông báo";
+}
+
+<div class="notebook-error-card p-4 my-4" style="max-width: 680px; margin: 0 auto; border: 2px dashed #D64550; background-color: #FAFCFD; border-radius: 8px;">
+    <h2 style="color: #D64550; font-family: 'Patrick Hand', cursive, sans-serif; font-size: 2rem;">
+        @(Model?.Title ?? "Đã có sự cố xảy ra")
+    </h2>
+
+    <p style="color: #3B3F46; font-size: 1.1rem; line-height: 1.6; margin-top: 1rem;">
+        @(Model?.Message ?? "Không thể hoàn thành thao tác vào lúc này. Vui lòng kiểm tra lại dịch vụ và thử lại.")
+    </p>
+
+    <div class="mt-4 d-flex gap-3 align-items-center">
+        @if (!string.IsNullOrEmpty(Model?.RetryUrl))
+        {
+            <a href="@Model.RetryUrl" class="btn" style="background-color: #1F3A93; color: #FFFFFF; font-weight: 600; padding: 0.5rem 1.5rem; text-decoration: none; border-radius: 4px;">
+                Thử lại
+            </a>
+        }
+        <a href="/" class="btn" style="background-color: #CFE3F1; color: #1F3A93; font-weight: 600; padding: 0.5rem 1.5rem; text-decoration: none; border-radius: 4px;">
+            Về trang chủ
+        </a>
+    </div>
+</div>

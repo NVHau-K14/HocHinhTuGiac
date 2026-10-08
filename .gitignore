@@ -1,0 +1,20 @@
+## .NET & Visual Studio
+[Bb]in/
+[Oo]bj/
+.vs/
+.vscode/
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+
+## Sensitive configuration files (Neo4j credentials, local settings)
+**/appsettings.Development.json
+**/appsettings.*.local.json
+*.env
+
+## OS & Temp
+.DS_Store
+Thumbs.db
+*.log
+scratch/
