@@ -28,10 +28,8 @@ public class HomeController : Controller
         var learner = await _learnerService.GetOrCreateLearnerAsync(clientId);
         ViewBag.DisplayName = learner.DisplayName;
 
-        var shapeCount = await _shapeService.GetShapeCountAsync();
-        ViewBag.ShapeCount = shapeCount;
-
-        return View();
+        var shapes = await _shapeService.GetAllShapesAsync();
+        return View(shapes);
     }
 
     [HttpGet]

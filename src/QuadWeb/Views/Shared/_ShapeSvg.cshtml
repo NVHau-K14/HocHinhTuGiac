@@ -1,0 +1,163 @@
+@model string
+@{
+    var slug = Model ?? "tu-giac";
+}
+
+@if (slug == "tu-giac")
+{
+    <svg class="sketch-svg" viewBox="0 0 240 180" role="img" aria-label="Hình tứ giác" xmlns="http://www.w3.org/2000/svg">
+        <title>Tứ giác ABCD</title>
+        <!-- Bốn cạnh tứ giác -->
+        <path class="sketch-stroke" pathLength="1" d="M 50 45 L 185 35 L 195 145 L 45 135 Z" />
+        <!-- Nhãn đỉnh -->
+        <text class="sketch-label" x="35" y="42">A</text>
+        <text class="sketch-label" x="195" y="32">B</text>
+        <text class="sketch-label" x="205" y="152">C</text>
+        <text class="sketch-label" x="30" y="145">D</text>
+    </svg>
+}
+else if (slug == "hinh-thang")
+{
+    <svg class="sketch-svg" viewBox="0 0 240 180" role="img" aria-label="Hình thang" xmlns="http://www.w3.org/2000/svg">
+        <title>Hình thang ABCD (AB // CD)</title>
+        <!-- Khung hình thang -->
+        <path class="sketch-stroke" pathLength="1" d="M 75 45 L 165 45 L 205 140 L 35 140 Z" />
+        <!-- Ký hiệu song song: Mũi tên nhỏ trên AB và CD -->
+        <path class="sketch-mark" pathLength="1" d="M 115 41 L 123 45 L 115 49" />
+        <path class="sketch-mark" pathLength="1" d="M 115 136 L 123 140 L 115 144" />
+        <!-- Nhãn đỉnh -->
+        <text class="sketch-label" x="62" y="42">A</text>
+        <text class="sketch-label" x="172" y="42">B</text>
+        <text class="sketch-label" x="212" y="145">C</text>
+        <text class="sketch-label" x="22" y="145">D</text>
+    </svg>
+}
+else if (slug == "hinh-thang-can")
+{
+    <svg class="sketch-svg" viewBox="0 0 240 180" role="img" aria-label="Hình thang cân" xmlns="http://www.w3.org/2000/svg">
+        <title>Hình thang cân ABCD (AB // CD, AD = BC)</title>
+        <!-- Khung hình thang cân đối xứng -->
+        <path class="sketch-stroke" pathLength="1" d="M 75 45 L 165 45 L 195 140 L 45 140 Z" />
+        <!-- Ký hiệu cạnh bên bằng nhau: gạch đơn trên AD và BC -->
+        <path class="sketch-mark" pathLength="1" d="M 55 90 L 65 95" />
+        <path class="sketch-mark" pathLength="1" d="M 175 95 L 185 90" />
+        <!-- Ký hiệu góc kề đáy bằng nhau: Cung tròn ở góc D và C -->
+        <path class="sketch-mark" pathLength="1" d="M 60 140 A 15 15 0 0 0 54 126" />
+        <path class="sketch-mark" pathLength="1" d="M 180 140 A 15 15 0 0 1 186 126" />
+        <!-- Nhãn đỉnh -->
+        <text class="sketch-label" x="62" y="42">A</text>
+        <text class="sketch-label" x="172" y="42">B</text>
+        <text class="sketch-label" x="202" y="145">C</text>
+        <text class="sketch-label" x="32" y="145">D</text>
+    </svg>
+}
+else if (slug == "hinh-binh-hanh")
+{
+    <svg class="sketch-svg" viewBox="0 0 240 180" role="img" aria-label="Hình bình hành" xmlns="http://www.w3.org/2000/svg">
+        <title>Hình bình hành ABCD</title>
+        <!-- Khung hình bình hành -->
+        <path class="sketch-stroke" pathLength="1" d="M 70 45 L 195 45 L 170 140 L 45 140 Z" />
+        <!-- Ký hiệu song song: mũi tên trên AB và CD -->
+        <path class="sketch-mark" pathLength="1" d="M 128 41 L 136 45 L 128 49" />
+        <path class="sketch-mark" pathLength="1" d="M 103 136 L 111 140 L 103 144" />
+        <!-- Ký hiệu cạnh đối bằng nhau -->
+        <path class="sketch-mark" pathLength="1" d="M 54 90 L 62 95" />
+        <path class="sketch-mark" pathLength="1" d="M 178 90 L 186 95" />
+        <!-- Nhãn đỉnh -->
+        <text class="sketch-label" x="55" y="42">A</text>
+        <text class="sketch-label" x="202" y="42">B</text>
+        <text class="sketch-label" x="175" y="152">C</text>
+        <text class="sketch-label" x="30" y="145">D</text>
+    </svg>
+}
+else if (slug == "hinh-chu-nhat")
+{
+    <svg class="sketch-svg" viewBox="0 0 240 180" role="img" aria-label="Hình chữ nhật" xmlns="http://www.w3.org/2000/svg">
+        <title>Hình chữ nhật ABCD</title>
+        <!-- Khung hình chữ nhật vuông góc -->
+        <path class="sketch-stroke" pathLength="1" d="M 45 45 L 195 45 L 195 135 L 45 135 Z" />
+        <!-- 4 ký hiệu góc vuông -->
+        <path class="sketch-mark" pathLength="1" d="M 45 57 L 57 57 L 57 45" />
+        <path class="sketch-mark" pathLength="1" d="M 183 45 L 183 57 L 195 57" />
+        <path class="sketch-mark" pathLength="1" d="M 195 123 L 183 123 L 183 135" />
+        <path class="sketch-mark" pathLength="1" d="M 45 123 L 57 123 L 57 135" />
+        <!-- Cạnh bằng nhau: gạch đơn trên chiều rộng, gạch đôi trên chiều dài -->
+        <path class="sketch-mark" pathLength="1" d="M 42 90 L 48 90" />
+        <path class="sketch-mark" pathLength="1" d="M 192 90 L 198 90" />
+        <path class="sketch-mark" pathLength="1" d="M 118 42 L 118 48 M 122 42 L 122 48" />
+        <path class="sketch-mark" pathLength="1" d="M 118 132 L 118 138 M 122 132 L 122 138" />
+        <!-- Nhãn đỉnh -->
+        <text class="sketch-label" x="30" y="42">A</text>
+        <text class="sketch-label" x="202" y="42">B</text>
+        <text class="sketch-label" x="202" y="142">C</text>
+        <text class="sketch-label" x="30" y="142">D</text>
+    </svg>
+}
+else if (slug == "hinh-thoi")
+{
+    <svg class="sketch-svg" viewBox="0 0 240 180" role="img" aria-label="Hình thoi" xmlns="http://www.w3.org/2000/svg">
+        <title>Hình thoi ABCD (bốn cạnh bằng nhau, đường chéo vuông góc)</title>
+        <!-- 4 cạnh hình thoi -->
+        <path class="sketch-stroke" pathLength="1" d="M 120 25 L 205 90 L 120 155 L 35 90 Z" />
+        <!-- Hai đường chéo nét đứt mảnh -->
+        <path class="sketch-diag" pathLength="1" stroke-dasharray="4,4" d="M 120 25 L 120 155 M 35 90 L 205 90" />
+        <!-- Ký hiệu góc vuông ở tâm -->
+        <path class="sketch-mark" pathLength="1" d="M 120 80 L 130 80 L 130 90" />
+        <!-- Gạch đơn bằng nhau trên 4 cạnh -->
+        <path class="sketch-mark" pathLength="1" d="M 158 54 L 166 60" />
+        <path class="sketch-mark" pathLength="1" d="M 166 120 L 158 126" />
+        <path class="sketch-mark" pathLength="1" d="M 74 120 L 82 126" />
+        <path class="sketch-mark" pathLength="1" d="M 82 54 L 74 60" />
+        <!-- Nhãn đỉnh -->
+        <text class="sketch-label" x="115" y="18">A</text>
+        <text class="sketch-label" x="212" y="95">B</text>
+        <text class="sketch-label" x="115" y="172">C</text>
+        <text class="sketch-label" x="20" y="95">D</text>
+    </svg>
+}
+else if (slug == "hinh-vuong")
+{
+    <svg class="sketch-svg" viewBox="0 0 240 180" role="img" aria-label="Hình vuông" xmlns="http://www.w3.org/2000/svg">
+        <title>Hình vuông ABCD</title>
+        <!-- Khung hình vuông chính xác 120x120 -->
+        <path class="sketch-stroke" pathLength="1" d="M 60 30 L 180 30 L 180 150 L 60 150 Z" />
+        <!-- 4 góc vuông -->
+        <path class="sketch-mark" pathLength="1" d="M 60 42 L 72 42 L 72 30" />
+        <path class="sketch-mark" pathLength="1" d="M 168 30 L 168 42 L 180 42" />
+        <path class="sketch-mark" pathLength="1" d="M 180 138 L 168 138 L 168 150" />
+        <path class="sketch-mark" pathLength="1" d="M 60 138 L 72 138 L 72 150" />
+        <!-- Gạch đơn bằng nhau trên 4 cạnh -->
+        <path class="sketch-mark" pathLength="1" d="M 117 27 L 123 33" />
+        <path class="sketch-mark" pathLength="1" d="M 177 87 L 183 93" />
+        <path class="sketch-mark" pathLength="1" d="M 117 147 L 123 153" />
+        <path class="sketch-mark" pathLength="1" d="M 57 87 L 63 93" />
+        <!-- Nhãn đỉnh -->
+        <text class="sketch-label" x="46" y="28">A</text>
+        <text class="sketch-label" x="187" y="28">B</text>
+        <text class="sketch-label" x="187" y="157">C</text>
+        <text class="sketch-label" x="46" y="157">D</text>
+    </svg>
+}
+else if (slug == "hinh-dieu")
+{
+    <svg class="sketch-svg" viewBox="0 0 240 180" role="img" aria-label="Hình diều" xmlns="http://www.w3.org/2000/svg">
+        <title>Hình diều ABCD (AB = AD, CB = CD)</title>
+        <!-- Khung hình diều đối xứng qua trục dọc -->
+        <path class="sketch-stroke" pathLength="1" d="M 120 25 L 185 80 L 120 160 L 55 80 Z" />
+        <!-- Hai đường chéo vuông góc -->
+        <path class="sketch-diag" pathLength="1" stroke-dasharray="4,4" d="M 120 25 L 120 160 M 55 80 L 185 80" />
+        <!-- Ký hiệu góc vuông tại giao điểm đường chéo (120, 80) -->
+        <path class="sketch-mark" pathLength="1" d="M 120 70 L 130 70 L 130 80" />
+        <!-- Cặp cạnh kề trên bằng nhau: gạch đơn -->
+        <path class="sketch-mark" pathLength="1" d="M 85 50 L 92 56" />
+        <path class="sketch-mark" pathLength="1" d="M 155 50 L 148 56" />
+        <!-- Cặp cạnh kề dưới bằng nhau: gạch đôi -->
+        <path class="sketch-mark" pathLength="1" d="M 83 118 L 89 124 M 87 115 L 93 121" />
+        <path class="sketch-mark" pathLength="1" d="M 157 118 L 151 124 M 153 115 L 147 121" />
+        <!-- Nhãn đỉnh -->
+        <text class="sketch-label" x="115" y="18">A</text>
+        <text class="sketch-label" x="193" y="85">B</text>
+        <text class="sketch-label" x="115" y="174">C</text>
+        <text class="sketch-label" x="40" y="85">D</text>
+    </svg>
+}

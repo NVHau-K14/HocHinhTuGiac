@@ -1,29 +1,82 @@
+@model List<QuadWeb.Models.Shape>
 @{
-    ViewData["Title"] = "Trang chủ - Nền tảng học hình học";
+    ViewData["Title"] = "Trang chủ - Học hình học phẳng: Tứ giác";
 }
 
-<div class="py-4">
-    <h1 class="mb-3 text-primary" style="font-family: 'Patrick Hand', cursive, sans-serif;">
+<div class="py-2">
+    <!-- Tiêu đề nét chữ viết tay -->
+    <h1 class="mb-2" style="font-size: 2.4rem;">
         Học hình học phẳng: Tứ giác
     </h1>
-    <p class="lead">Chào mừng <strong>@(ViewBag.DisplayName ?? "Người học")</strong> đến với hệ thống học tập trực quan trên cơ sở dữ liệu đồ thị Neo4j.</p>
+    <p class="prose" style="font-size: 1.05rem; line-height: 24px; color: var(--color-pencil);">
+        Chào mừng bạn đến với trang vở học tập hình học phẳng. Dưới đây là 8 loại tứ giác cơ bản được biểu diễn trực quan trên hệ cơ sở dữ liệu đồ thị <strong style="color: var(--color-ink);">Neo4j</strong>, khám phá các mối quan hệ kế thừa và tính chất toán học đặc trưng.
+    </p>
 
-    <div class="alert alert-info d-flex align-items-center justify-content-between p-3 mt-4" role="alert">
-        <div>
-            <h5 class="alert-heading mb-1">Kiểm tra kết nối Neo4j Desktop (Giai đoạn 1)</h5>
-            <p class="mb-0">
-                Trạng thái: <strong>Kết nối thành công!</strong> | Số lượng hình (Shape) hiện có trong Neo4j: <span class="badge bg-primary fs-6">@ViewBag.ShapeCount</span>
-            </p>
+    <!-- Bảng vẽ 8 tứ giác (Điểm nhấn thị giác chính với nét mực tự vẽ ~1.2s) -->
+    <div class="mt-4">
+        <h2 style="font-size: 1.6rem; margin-bottom: 8px;">
+            Các loại tứ giác trên trang vở
+        </h2>
+        <p class="small text-muted mb-3">
+            Bấm vào từng hình để xem định nghĩa, tính chất kế thừa, định lý và ví dụ minh họa.
+        </p>
+
+        <div class="shape-card-grid">
+            @if (Model != null && Model.Any())
+            {
+                foreach (var shape in Model)
+                {
+                    var familyClass = shape.Family switch
+                    {
+                        "thang" => "family-thang",
+                        "binh-hanh" => "family-binhhanh",
+                        "dieu" => "family-dieu",
+                        _ => "family-goc"
+                    };
+
+                    <a href="/shape/@shape.Slug" class="shape-card @familyClass" title="Xem chi tiết @shape.Name">
+                        <div style="width: 100%; height: 140px; display: flex; align-items: center; justify-content: center;">
+                            @await Html.PartialAsync("_ShapeSvg", shape.Slug)
+                        </div>
+                        <h3 class="shape-name">@shape.Name</h3>
+                        <p class="shape-desc">@shape.ShortDescription</p>
+                    </a>
+                }
+            }
+            else
+            {
+                <div class="p-3 text-muted">Đang tải danh sách hình từ cơ sở dữ liệu...</div>
+            }
         </div>
-        <a href="/" class="btn btn-outline-primary btn-sm">Làm mới</a>
     </div>
 
-    <div class="card mt-4 border-light shadow-sm">
-        <div class="card-body">
-            <h5 class="card-title text-secondary">Thông tin phiên học ẩn danh</h5>
-            <p class="card-text text-muted mb-0">
-                Phiên học của bạn được định danh tự động qua cookie (không yêu cầu đăng nhập). Tiến trình học và kết quả quiz sẽ được lưu tự động theo định danh này.
-            </p>
-        </div>
+    <!-- 5 Lối vào dạng danh sách có dấu gạch đầu dòng (Theo đúng brief: không dùng lưới thẻ lặp lại) -->
+    <div class="mt-4 pt-2" style="border-top: 1.5px dashed var(--color-grid); max-width: 760px;">
+        <h2 style="font-size: 1.6rem; margin-bottom: 12px;">
+            Nội dung và bài tập trong vở
+        </h2>
+        
+        <ul class="entry-list">
+            <li>
+                <a href="/shapes">1. Khám phá 8 loại hình và sơ đồ quan hệ phân cấp</a>
+                <span class="entry-desc">Đọc định nghĩa, tính chất trực tiếp và kế thừa qua quan hệ IS_A trong Neo4j, mở sơ đồ vis-network tương tác.</span>
+            </li>
+            <li>
+                <a href="/practice">2. Luyện tập theo từng chủ đề</a>
+                <span class="entry-desc">Mỗi hình 5 câu hỏi chọn lọc (lý thuyết, tính toán, nhận biết), kiểm tra kết quả tức thì và xem giải thích chi tiết.</span>
+            </li>
+            <li>
+                <a href="/quiz">3. Bài kiểm tra Quiz tổng hợp 10 câu</a>
+                <span class="entry-desc">Hệ thống chọn ngẫu nhiên 10 câu hỏi bao phủ 8 hình, chấm điểm tại máy chủ với điểm viết tay khoanh tròn đỏ.</span>
+            </li>
+            <li>
+                <a href="/leaderboard">4. Bảng điểm lớp (Bảng xếp hạng)</a>
+                <span class="entry-desc">Tra cứu kết quả học tập tốt nhất của các bạn học sinh, hiển thị dạng dòng kẻ bảng điểm thân quen.</span>
+            </li>
+            <li>
+                <a href="/search">5. Tra cứu và tìm kiếm kiến thức</a>
+                <span class="entry-desc">Tìm nhanh định nghĩa, định lý, dấu hiệu nhận biết và công thức toán học có dấu hoặc không dấu.</span>
+            </li>
+        </ul>
     </div>
 </div>

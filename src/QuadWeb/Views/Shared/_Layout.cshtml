@@ -3,46 +3,86 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Học Hình Tứ Giác</title>
+    <title>@ViewData["Title"] - Học Hình Học Phẳng: Tứ Giác</title>
+    
+    <!-- Google Fonts: Patrick Hand & Be Vietnam Pro (subset vietnamese) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,600;0,700;1,400&family=Patrick+Hand&display=swap" rel="stylesheet">
+    
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
+
+    <!-- Bootstrap Grid & Utilities only -->
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <!-- Site Notebook CSS -->
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/QuadWeb.styles.css" asp-append-version="true" />
 </head>
 <body>
     <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom mb-3">
-            <div class="container">
-                <a class="navbar-brand fw-bold text-primary" asp-area="" asp-controller="Home" asp-action="Index">Học Hình Tứ Giác</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
+        <nav class="notebook-nav navbar navbar-expand-md">
+            <div class="container-fluid max-w-1180 px-2">
+                <a class="navbar-brand" asp-controller="Home" asp-action="Index">
+                    <span style="color: var(--color-margin); font-weight: bold;">✎</span> Tứ Giác Học
+                </a>
+                <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navContent" aria-controls="navContent"
+                        aria-expanded="false" aria-label="Mở thực đơn">
+                    <span style="font-family: 'Patrick Hand', cursive; font-size: 1.3rem; color: var(--color-ink);">☰ Menu</span>
                 </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
+                <div class="collapse navbar-collapse" id="navContent">
+                    <ul class="navbar-nav me-auto mb-2 mb-md-0">
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Trang chủ</a>
+                            <a class="nav-link" asp-controller="Home" asp-action="Index">Trang chủ</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/shapes">Khám phá</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/practice">Luyện tập</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/quiz">Quiz</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/leaderboard">Bảng điểm lớp</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/search">Tìm kiếm</a>
                         </li>
                     </ul>
-                    <span class="navbar-text small text-secondary">
-                        Chào, <strong>@(ViewBag.DisplayName ?? "Người học")</strong>
-                    </span>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="small" style="color: var(--color-pencil);">
+                            Người học: <strong style="color: var(--color-ink); font-family: 'Patrick Hand', cursive; font-size: 1.25rem;">@(ViewBag.DisplayName ?? "Người học")</strong>
+                        </span>
+                    </div>
                 </div>
             </div>
         </nav>
     </header>
-    <div class="container">
-        <main role="main" class="pb-3">
-            @RenderBody()
-        </main>
+
+    <div class="notebook-wrapper">
+        <div class="notebook-page">
+            <main role="main">
+                @RenderBody()
+            </main>
+        </div>
     </div>
 
-    <footer class="border-top footer text-muted py-3 mt-4">
-        <div class="container text-center small">
-            &copy; 2026 - Học Hình Học Phẳng: Tứ giác - Hệ thống NoSQL Neo4j
+    <footer class="notebook-footer">
+        <div class="container text-center">
+            &copy; 2026 - Website Học Hình Học Phẳng: Tứ Giác &bull; Đồ án môn NoSQL (Neo4j Graph Database)
         </div>
     </footer>
+
+    <!-- Scripts -->
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- KaTeX JS & Auto-render extension -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"
+            onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+    
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>

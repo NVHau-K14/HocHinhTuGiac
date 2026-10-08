@@ -1,31 +1,390 @@
-html {
-  font-size: 14px;
+/* ==========================================================================
+   THIẾT KẾ VỞ Ô LI – TOÁN HÌNH HỌC PHẲNG: TỨ GIÁC
+   Tokens và quy chuẩn theo DESIGN_BRIEF.md và AGENT_PROMPT.md
+   ========================================================================== */
+
+:root {
+  /* 6 Tokens màu chính */
+  --color-paper: #FAFCFD;
+  --color-grid: #CFE3F1;
+  --color-margin: #D64550;
+  --color-ink: #1F3A93;
+  --color-pencil: #3B3F46;
+  --color-highlight: #FFE66D;
+
+  /* Màu trạng thái đánh giá */
+  --color-correct: #2E8B57;
+  --color-wrong: #D64550;
+
+  /* Màu nền nhạt theo họ hình (cây IS_A) */
+  --family-thang-bg: #E6DDF5;
+  --family-binhhanh-bg: #D8F0E4;
+  --family-dieu-bg: #FBE0E8;
+  --family-goc-bg: #FAFCFD;
+
+  /* Đơn vị lưới */
+  --grid-size: 24px;
 }
 
-@media (min-width: 768px) {
-  html {
-    font-size: 16px;
+/* Toàn trang: Lưới ô li 24px bằng CSS Linear Gradient (Không dùng ảnh) */
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-paper);
+  background-image: 
+    linear-gradient(var(--color-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-grid) 1px, transparent 1px);
+  background-size: var(--grid-size) var(--grid-size);
+  color: var(--color-pencil);
+  font-family: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 15px;
+  line-height: var(--grid-size);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Lề vở học sinh (Đường chỉ đỏ dọc) */
+.notebook-wrapper {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 16px 48px 16px;
+}
+
+/* Đường lề đỏ kẻ dọc như trang vở thật */
+.notebook-page {
+  position: relative;
+  border-left: 2px solid var(--color-margin);
+  margin-left: 60px;
+  padding-left: 24px;
+  min-height: calc(100vh - 120px);
+}
+
+@media (max-width: 768px) {
+  .notebook-page {
+    margin-left: 18px;
+    padding-left: 14px;
   }
 }
 
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+/* Typography */
+h1, h2, h3, h4, h5, h6, .handwritten {
+  font-family: 'Patrick Hand', cursive, sans-serif;
+  color: var(--color-ink);
+  font-weight: normal;
+  letter-spacing: 0.5px;
 }
 
-html {
+h1 {
+  font-size: 2.2rem;
+  line-height: calc(var(--grid-size) * 2);
+  margin-bottom: var(--grid-size);
+}
+
+h2 {
+  font-size: 1.8rem;
+  line-height: calc(var(--grid-size) * 1.5);
+  margin-top: var(--grid-size);
+  margin-bottom: calc(var(--grid-size) / 2);
+}
+
+h3 {
+  font-size: 1.4rem;
+  line-height: var(--grid-size);
+  margin-bottom: calc(var(--grid-size) / 2);
+}
+
+p, li {
+  line-height: var(--grid-size);
+  margin-bottom: calc(var(--grid-size) / 2);
+}
+
+/* Giới hạn độ dài dòng đọc tối ưu ~70 ký tự */
+.prose {
+  max-width: 70ch;
+}
+
+/* Tô màu bút dạ quang */
+.highlight {
+  background-color: var(--color-highlight);
+  padding: 2px 6px;
+  border-radius: 2px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* Navbar phong cách trang vở */
+.notebook-nav {
+  background: var(--color-paper);
+  border-bottom: 2px solid var(--color-grid);
+  padding: 8px 16px;
+}
+
+.notebook-nav .navbar-brand {
+  font-family: 'Patrick Hand', cursive, sans-serif;
+  font-size: 1.8rem;
+  color: var(--color-ink);
+  text-decoration: none;
+}
+
+.notebook-nav .nav-link {
+  color: var(--color-ink);
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 4px;
+  text-decoration: none;
+  transition: background-color 0.15s ease;
+}
+
+.notebook-nav .nav-link:hover {
+  background-color: var(--color-grid);
+}
+
+.notebook-nav .nav-link.active {
+  background-color: var(--color-grid);
+  color: var(--color-ink);
+  font-weight: 600;
+}
+
+/* Nút bấm phong cách thủ công, không dùng màu xanh mặc định Bootstrap */
+.btn-pen {
+  display: inline-block;
+  font-family: 'Patrick Hand', cursive, sans-serif;
+  font-size: 1.25rem;
+  color: var(--color-paper);
+  background-color: var(--color-ink);
+  border: 1px solid var(--color-ink);
+  border-radius: 4px;
+  padding: 6px 18px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-pen:hover {
+  background-color: #162a6b;
+  color: var(--color-paper);
+  box-shadow: 2px 2px 0px rgba(31, 58, 147, 0.3);
+}
+
+.btn-pen-outline {
+  display: inline-block;
+  font-family: 'Patrick Hand', cursive, sans-serif;
+  font-size: 1.25rem;
+  color: var(--color-ink);
+  background-color: transparent;
+  border: 1.5px solid var(--color-ink);
+  border-radius: 4px;
+  padding: 5px 16px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-pen-outline:hover {
+  background-color: var(--color-grid);
+  color: var(--color-ink);
+}
+
+/* ==========================================================================
+   8 HÌNH SVG VẼ TAY & HIỆU ỨNG TỰ VẼ (STROKE-DASHOFFSET)
+   ========================================================================== */
+
+.shape-card-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-top: 16px;
+  margin-bottom: 32px;
+}
+
+@media (max-width: 992px) {
+  .shape-card-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .shape-card-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.shape-card {
+  border: 1.5px solid var(--color-grid);
+  border-radius: 6px;
+  padding: 12px;
+  text-align: center;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.shape-card:hover {
+  border-color: var(--color-ink);
+  box-shadow: 3px 3px 0px var(--color-grid);
+  transform: translateY(-2px);
+  color: inherit;
+}
+
+/* Màu nền nhạt theo họ hình */
+.shape-card.family-thang {
+  background-color: var(--family-thang-bg);
+}
+
+.shape-card.family-binhhanh {
+  background-color: var(--family-binhhanh-bg);
+}
+
+.shape-card.family-dieu {
+  background-color: var(--family-dieu-bg);
+}
+
+.shape-card.family-goc {
+  background-color: var(--family-goc-bg);
+}
+
+.shape-card .shape-name {
+  font-family: 'Patrick Hand', cursive, sans-serif;
+  font-size: 1.35rem;
+  color: var(--color-ink);
+  margin-top: 8px;
+  margin-bottom: 0;
+}
+
+.shape-card .shape-desc {
+  font-size: 0.82rem;
+  color: #555c66;
+  line-height: 1.25;
+  margin-top: 4px;
+  margin-bottom: 0;
+}
+
+/* Nét vẽ SVG */
+.sketch-svg {
+  width: 100%;
+  max-width: 220px;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+.sketch-stroke {
+  fill: none;
+  stroke: var(--color-ink);
+  stroke-width: 2.2px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: drawStroke 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.sketch-mark {
+  fill: none;
+  stroke: var(--color-ink);
+  stroke-width: 1.8px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: drawStroke 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.sketch-diag {
+  fill: none;
+  stroke: var(--color-ink);
+  stroke-width: 1.2px;
+  opacity: 0.5;
+}
+
+.sketch-label {
+  font-family: 'Patrick Hand', cursive, sans-serif;
+  font-size: 17px;
+  font-weight: bold;
+  fill: var(--color-ink);
+}
+
+@keyframes drawStroke {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Tôn trọng người dùng không thích chuyển động */
+@media (prefers-reduced-motion: reduce) {
+  .sketch-stroke, .sketch-mark {
+    animation: none !important;
+    stroke-dashoffset: 0 !important;
+  }
+  .shape-card:hover {
+    transform: none !important;
+  }
+}
+
+/* 5 Lối vào dạng danh sách gạch đầu dòng (Theo DESIGN_BRIEF.md - Không dùng lưới card lặp lại) */
+.entry-list {
+  list-style-type: none;
+  padding-left: 0;
+  margin-top: 16px;
+}
+
+.entry-list li {
   position: relative;
-  min-height: 100%;
+  padding-left: 28px;
+  margin-bottom: 12px;
+  line-height: 24px;
 }
 
-body {
-  margin-bottom: 60px;
+.entry-list li::before {
+  content: "✎";
+  position: absolute;
+  left: 0;
+  color: var(--color-ink);
+  font-size: 1.1rem;
 }
 
-.form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
-  color: var(--bs-secondary-color);
-  text-align: end;
+.entry-list a {
+  color: var(--color-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-weight: 600;
+  font-size: 1.15rem;
 }
 
-.form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
-  text-align: start;
+.entry-list a:hover {
+  color: #0b1a4a;
+  background-color: var(--color-highlight);
+}
+
+.entry-desc {
+  color: var(--color-pencil);
+  display: block;
+  font-size: 0.95rem;
+  margin-top: 2px;
+}
+
+/* Footer phong cách vở */
+.notebook-footer {
+  border-top: 1px solid var(--color-grid);
+  padding: 16px 0;
+  font-size: 0.85rem;
+  color: #717882;
+  text-align: center;
+  background-color: var(--color-paper);
+}
+
+/* KaTeX Wrapper cuộn ngang khi trên mobile 360px */
+.katex-display-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 100%;
+  padding: 4px 0;
+  -webkit-overflow-scrolling: touch;
 }

@@ -1,3 +1,4 @@
+using QuadWeb.Models;
 using QuadWeb.Repositories;
 
 namespace QuadWeb.Services;
@@ -14,5 +15,15 @@ public class ShapeService : IShapeService
     public Task<int> GetShapeCountAsync()
     {
         return _shapeRepository.GetShapeCountAsync();
+    }
+
+    public Task<List<Shape>> GetAllShapesAsync()
+    {
+        return _shapeRepository.GetAllShapesAsync();
+    }
+
+    public Task<Shape?> GetShapeBySlugAsync(string slug)
+    {
+        return _shapeRepository.GetShapeBySlugAsync(slug);
     }
 }
