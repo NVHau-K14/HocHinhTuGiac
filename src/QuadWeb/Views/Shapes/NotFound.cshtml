@@ -1,0 +1,23 @@
+@model QuadWeb.Models.ErrorViewModel
+@{
+    ViewData["Title"] = Model?.Title ?? "Không tìm thấy nội dung";
+}
+
+<div class="p-4 my-4" style="max-width: 640px; margin: 0 auto; border: 2px dashed var(--color-margin); background-color: var(--color-paper); border-radius: 6px;">
+    <h2 style="color: var(--color-margin); font-size: 2rem;">
+        @(Model?.Title ?? "404 - Không tìm thấy bài học")
+    </h2>
+
+    <p style="color: var(--color-pencil); font-size: 1.1rem; line-height: 1.6; margin-top: 1rem;">
+        @(Model?.Message ?? "Đường dẫn loại hình tứ giác bạn tìm kiếm không tồn tại trên hệ thống bài học.")
+    </p>
+
+    <div class="mt-4">
+        <a href="/shapes" class="btn-pen">
+            Xem danh sách 8 hình tứ giác
+        </a>
+        <a href="/" class="btn-pen-outline ms-2">
+            Về trang chủ
+        </a>
+    </div>
+</div>

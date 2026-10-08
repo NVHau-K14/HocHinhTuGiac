@@ -26,4 +26,9 @@ public class ShapeService : IShapeService
     {
         return _shapeRepository.GetShapeBySlugAsync(slug);
     }
+
+    public Task<ShapeDetailViewModel?> GetShapeDetailAsync(string slug)
+    {
+        return _shapeRepository.GetShapeDetailAsync(slug);
+    }
 }
