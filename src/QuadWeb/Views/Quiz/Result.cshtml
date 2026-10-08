@@ -1,0 +1,171 @@
+@model QuadWeb.Models.QuizResultViewModel
+@{
+    ViewData["Title"] = "Kết quả bài kiểm tra";
+    var comment = Model.Score switch
+    {
+        100 => "Xuất sắc! Em nắm toàn bộ kiến thức tứ giác rất vững vàng!",
+        >= 80 => "Rất tốt! Em hiểu sâu sắc các tính chất và định lý!",
+        >= 60 => "Khá tốt! Hãy đọc kỹ lại những câu chưa chính xác nhé!",
+        >= 40 => "Trung bình! Em nên ôn tập lại trang Khám phá hình học.",
+        _ => "Cố gắng lên nhé! Hãy dành thêm thời gian đọc lại lý thuyết và làm bài tập."
+    };
+}
+
+<div class="mb-4">
+    <div class="d-flex align-items-center gap-2 mb-2">
+        <a href="/" class="text-decoration-none small" style="color: var(--color-pencil);">&larr; Về trang chủ</a>
+        <span class="text-muted">|</span>
+        <a href="/quiz" class="text-decoration-none small" style="color: var(--color-pencil);">Làm bài kiểm tra mới</a>
+    </div>
+</div>
+
+<!-- Khung tổng kết điểm phong cách sổ điểm cô giáo -->
+<div class="p-4 mb-4" style="background-color: #FFFFFF; border: 2px solid var(--color-ink); border-radius: 8px; box-shadow: 4px 4px 0px rgba(31, 58, 147, 0.2);">
+    <div class="row align-items-center">
+        <div class="col-md-8 mb-3 mb-md-0">
+            <span class="small text-uppercase tracking-wider" style="color: var(--color-pencil); font-weight: 600;">
+                KẾT QUẢ BÀI KIỂM TRA TỨ GIÁC
+            </span>
+            <h2 style="color: var(--color-ink); font-family: 'Patrick Hand', cursive; font-size: 2.2rem; margin-top: 4px; margin-bottom: 8px;">
+                Đã hoàn thành 10 câu hỏi trắc nghiệm!
+            </h2>
+            <div class="p-3 mb-3" style="background-color: var(--color-highlight); border-left: 4px solid var(--color-margin); border-radius: 4px;">
+                <span style="font-family: 'Patrick Hand', cursive; font-size: 1.35rem; color: var(--color-margin); font-weight: bold;">
+                    Lời phê của giáo viên:
+                </span>
+                <p class="mb-0" style="font-size: 1.05rem; color: var(--color-text); font-style: italic;">
+                    "@comment"
+                </p>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <a href="/quiz" class="btn-pen">
+                    ✎ Làm lại bài quiz mới
+                </a>
+                <a href="/leaderboard" class="btn-pen-outline">
+                    Bảng điểm lớp &rarr;
+                </a>
+                <a href="/shapes" class="btn-pen-outline">
+                    Khám phá lý thuyết
+                </a>
+            </div>
+        </div>
+
+        <!-- Con dấu điểm khoanh tròn đỏ vẽ tay -->
+        <div class="col-md-4 text-center">
+            <div class="teacher-grade-stamp">
+                <span class="stamp-fraction">@Model.CorrectCount/@Model.Total</span>
+                <span class="stamp-score-100">@Model.Score/100 ĐIỂM</span>
+            </div>
+            <div class="mt-2 small" style="color: var(--color-pencil);">
+                Hoàn thành lúc @Model.CompletedAt.ToString("HH:mm - dd/MM/yyyy")
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Xem lại chi tiết từng câu -->
+<div class="mb-3 d-flex justify-content-between align-items-center">
+    <h3 style="color: var(--color-ink); font-family: 'Patrick Hand', cursive; font-size: 1.6rem; margin-bottom: 0;">
+        Xem lại chi tiết từng câu hỏi & Lời giải:
+    </h3>
+    <span class="small text-muted">Số câu đúng: <strong>@Model.CorrectCount / @Model.Total</strong></span>
+</div>
+
+<div class="quiz-review-list">
+    @for (int i = 0; i < Model.Questions.Count; i++)
+    {
+        var q = Model.Questions[i];
+        var qIndex = i + 1;
+        var badgeClass = q.Type switch
+        {
+            "THEORY" => "badge-theory",
+            "CALCULATION" => "badge-calc",
+            "RECOGNITION" => "badge-recog",
+            _ => "badge-theory"
+        };
+        var typeText = q.Type switch
+        {
+            "THEORY" => "Lý thuyết",
+            "CALCULATION" => "Tính toán",
+            "RECOGNITION" => "Nhận biết",
+            _ => q.Type
+        };
+
+        <div class="question-card mb-4" style="border-left: 4px solid @(q.IsCorrect ? "#137333" : "#C5221F");">
+            <div class="question-header">
+                <div>
+                    <strong style="color: var(--color-ink); font-size: 1.15rem; font-family: 'Patrick Hand', cursive;">
+                        Câu @qIndex:
+                    </strong>
+                    <span class="question-badge @badgeClass ms-2">@typeText</span>
+                    <span class="small text-muted ms-2">&bull; @q.ShapeName</span>
+                </div>
+                <div>
+                    @if (q.IsCorrect)
+                    {
+                        <span class="badge" style="background-color: #E6F4EA; color: #137333; font-size: 0.95rem; border: 1px solid #137333;">
+                            ✓ ĐÚNG (+10 điểm)
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="badge" style="background-color: #FCE8E6; color: #C5221F; font-size: 0.95rem; border: 1px solid #C5221F;">
+                            ✗ SAI (0 điểm)
+                        </span>
+                    }
+                </div>
+            </div>
+
+            <div class="question-content">
+                @q.Content
+            </div>
+
+            <div class="options-grid">
+                @{
+                    char optLetter = 'A';
+                }
+                @foreach (var opt in q.Options)
+                {
+                    var isSelected = opt.Id == q.SelectedOptionId;
+                    var isCorrect = opt.Id == q.CorrectOptionId;
+                    var itemClass = "";
+                    if (isCorrect) itemClass = "is-correct";
+                    else if (isSelected && !q.IsCorrect) itemClass = "is-incorrect";
+
+                    <div class="option-label @itemClass" style="cursor: default;">
+                        <span class="option-circle">@optLetter</span>
+                        <span class="option-text">
+                            @opt.Content
+                            @if (isSelected && isCorrect)
+                            {
+                                <strong class="ms-2 text-success">(Phương án bạn chọn - Đúng ✓)</strong>
+                            }
+                            else if (isSelected && !isCorrect)
+                            {
+                                <strong class="ms-2 text-danger">(Phương án bạn chọn - Sai ✗)</strong>
+                            }
+                            else if (isCorrect)
+                            {
+                                <strong class="ms-2 text-success">(Đáp án đúng ✓)</strong>
+                            }
+                        </span>
+                    </div>
+                    optLetter++;
+                }
+            </div>
+
+            <div class="explanation-box mt-3">
+                <strong style="color: #202124;">Lời giải chi tiết:</strong>
+                <p class="mb-0 mt-1" style="color: #3C4043;">
+                    @q.Explanation
+                </p>
+            </div>
+        </div>
+    }
+</div>
+
+<div class="text-center py-4 mb-5">
+    <a href="/quiz" class="btn-pen" style="font-size: 1.3rem; padding: 10px 30px;">
+        Làm lại bài kiểm tra Quiz mới ✎
+    </a>
+</div>

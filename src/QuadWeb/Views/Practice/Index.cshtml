@@ -1,0 +1,45 @@
+@model IEnumerable<QuadWeb.Models.Shape>
+@{
+    ViewData["Title"] = "Luyện tập theo hình";
+}
+
+<div class="mb-4">
+    <div class="d-flex align-items-center gap-2 mb-2">
+        <a href="/" class="text-decoration-none small" style="color: var(--color-pencil);">&larr; Về trang chủ</a>
+        <span class="text-muted">|</span>
+        <span class="small text-muted">Luyện tập trắc nghiệm</span>
+    </div>
+    <h1 style="color: var(--color-ink); margin-bottom: 8px;">
+        <span style="color: var(--color-margin);">✎</span> Bài tập luyện tập theo từng hình
+    </h1>
+    <p style="color: var(--color-pencil); font-size: 1.05rem;">
+        Mỗi hình gồm 5 câu hỏi bao gồm lý thuyết, bài toán tính toán và dấu hiệu nhận biết. Bạn có thể kiểm tra đáp án ngay sau mỗi câu và xem lời giải chi tiết.
+    </p>
+</div>
+
+<div class="practice-shape-list">
+    @foreach (var shape in Model)
+    {
+        <a href="/practice/@shape.Slug" class="practice-shape-item">
+            <div>
+                <h3 style="font-family: 'Patrick Hand', cursive; font-size: 1.4rem; color: var(--color-ink); margin-bottom: 4px;">
+                    @shape.Name
+                </h3>
+                <span class="small text-muted">@shape.ShortDescription &bull; 5 câu trắc nghiệm</span>
+            </div>
+            <div class="btn-pen-outline" style="font-size: 1.05rem; padding: 4px 12px;">
+                Bắt đầu làm &rarr;
+            </div>
+        </a>
+    }
+</div>
+
+<div class="mt-5 p-3" style="background-color: var(--color-paper); border: 1.5px dashed var(--color-ink); border-radius: 6px;">
+    <h4 style="font-family: 'Patrick Hand', cursive; color: var(--color-ink); margin-bottom: 6px;">
+        Muốn thử thách tổng hợp kiến thức?
+    </h4>
+    <p class="mb-2" style="font-size: 0.95rem; color: var(--color-text);">
+        Hãy tham gia <strong>Bài kiểm tra tổng hợp 10 câu</strong> bao quát toàn bộ 8 hình tứ giác để chấm điểm và lưu vào Bảng điểm lớp!
+    </p>
+    <a href="/quiz" class="btn-pen">Làm bài kiểm tra Quiz 10 câu &rarr;</a>
+</div>

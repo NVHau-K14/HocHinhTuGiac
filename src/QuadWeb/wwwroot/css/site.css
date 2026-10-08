@@ -430,3 +430,336 @@ p, li {
     max-height: 96vh;
   }
 }
+
+/* ==========================================================================
+   GIAI ĐOẠN 6: LUYỆN TẬP & QUIZ STYLES
+   ========================================================================== */
+
+/* Danh sách chọn hình để luyện tập */
+.practice-shape-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-top: 16px;
+}
+
+@media (max-width: 768px) {
+  .practice-shape-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+.practice-shape-item {
+  border: 1.5px solid var(--color-grid);
+  border-radius: 6px;
+  padding: 14px 18px;
+  background-color: var(--color-paper);
+  text-decoration: none;
+  color: var(--color-text);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.15s ease;
+}
+
+.practice-shape-item:hover {
+  border-color: var(--color-ink);
+  box-shadow: 3px 3px 0px rgba(31, 58, 147, 0.2);
+  transform: translateY(-2px);
+  color: var(--color-ink);
+}
+
+/* Thẻ câu hỏi */
+.question-card {
+  background-color: #FFFFFF;
+  border: 1.5px solid var(--color-grid);
+  border-radius: 6px;
+  padding: 20px;
+  margin-bottom: 24px;
+  box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.04);
+  transition: border-color 0.15s ease;
+}
+
+.question-card:focus-within,
+.question-card.active-target {
+  border-color: var(--color-ink);
+  box-shadow: 3px 3px 0px rgba(31, 58, 147, 0.15);
+}
+
+.question-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--color-grid);
+}
+
+.question-badge {
+  font-size: 0.8rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.badge-theory {
+  background-color: #E8F0FE;
+  color: #1A73E8;
+}
+
+.badge-calc {
+  background-color: #FEF7E0;
+  color: #B06000;
+}
+
+.badge-recog {
+  background-color: #E6F4EA;
+  color: #137333;
+}
+
+.question-content {
+  font-size: 1.08rem;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--color-text);
+  margin-bottom: 16px;
+}
+
+/* Danh sách 4 đáp án */
+.options-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.option-label {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  border: 1.5px solid var(--color-grid);
+  border-radius: 6px;
+  background-color: #FAFAFA;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  margin-bottom: 0;
+}
+
+.option-label:hover {
+  background-color: #F1F4F9;
+  border-color: #9AA0A6;
+}
+
+.option-label input[type="radio"] {
+  display: none;
+}
+
+.option-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-pencil);
+  font-family: 'Patrick Hand', cursive, sans-serif;
+  font-size: 1.15rem;
+  font-weight: bold;
+  color: var(--color-pencil);
+  margin-right: 12px;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.option-text {
+  font-size: 1rem;
+  color: var(--color-text);
+  flex-grow: 1;
+}
+
+/* Trạng thái được chọn */
+.option-label.selected {
+  background-color: #EEF3FA;
+  border-color: var(--color-ink);
+}
+
+.option-label.selected .option-circle {
+  border-color: var(--color-ink);
+  background-color: var(--color-ink);
+  color: #FFFFFF;
+}
+
+/* Trạng thái kết quả luyện tập hoặc sau khi nộp bài */
+.option-label.is-correct {
+  background-color: #E6F4EA !important;
+  border-color: #137333 !important;
+  color: #137333 !important;
+  font-weight: 600;
+}
+
+.option-label.is-correct .option-circle {
+  background-color: #137333 !important;
+  border-color: #137333 !important;
+  color: #FFFFFF !important;
+}
+
+.option-label.is-incorrect {
+  background-color: #FCE8E6 !important;
+  border-color: #C5221F !important;
+  color: #C5221F !important;
+  text-decoration: line-through;
+}
+
+.option-label.is-incorrect .option-circle {
+  background-color: #C5221F !important;
+  border-color: #C5221F !important;
+  color: #FFFFFF !important;
+}
+
+/* Hộp phản hồi & Lời giải */
+.practice-feedback {
+  margin-top: 14px;
+  padding: 12px 16px;
+  border-radius: 6px;
+  display: none;
+}
+
+.practice-feedback.show {
+  display: block;
+}
+
+.practice-feedback.feedback-correct {
+  background-color: #E6F4EA;
+  border: 1px solid #137333;
+  color: #0d5c28;
+}
+
+.practice-feedback.feedback-incorrect {
+  background-color: #FCE8E6;
+  border: 1px solid #C5221F;
+  color: #a51d1a;
+}
+
+.explanation-box {
+  background-color: var(--color-highlight);
+  border-left: 3px solid #D4A017;
+  padding: 12px 14px;
+  border-radius: 0 6px 6px 0;
+  margin-top: 10px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #3C4043;
+}
+
+/* Thanh tiến độ Quiz */
+.quiz-progress-sticky {
+  position: sticky;
+  top: 10px;
+  z-index: 100;
+  background-color: rgba(255, 253, 248, 0.95);
+  backdrop-filter: blur(4px);
+  border: 1.5px solid var(--color-ink);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 12px rgba(31, 58, 147, 0.12);
+}
+
+.quiz-progress-bar-wrap {
+  height: 10px;
+  background-color: var(--color-grid);
+  border-radius: 5px;
+  overflow: hidden;
+  margin: 8px 0 12px 0;
+}
+
+.quiz-progress-bar {
+  height: 100%;
+  width: 0%;
+  background-color: var(--color-ink);
+  transition: width 0.25s ease;
+}
+
+.quiz-nav-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.quiz-pill-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  border: 1px solid var(--color-grid);
+  background-color: #FFFFFF;
+  font-family: 'Patrick Hand', cursive, sans-serif;
+  font-size: 1.15rem;
+  color: var(--color-pencil);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.quiz-pill-btn:hover {
+  border-color: var(--color-ink);
+  color: var(--color-ink);
+}
+
+.quiz-pill-btn.answered {
+  background-color: var(--color-ink);
+  color: #FFFFFF;
+  border-color: var(--color-ink);
+}
+
+/* Con dấu điểm đỏ giáo viên chấm bài (Handwritten Red Grade Stamp) */
+.teacher-grade-stamp {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 3.5px solid #D64550;
+  border-radius: 50% 48% 52% 49% / 48% 52% 48% 52%;
+  width: 140px;
+  height: 140px;
+  padding: 10px;
+  color: #D64550;
+  transform: rotate(-6deg);
+  box-shadow: 0 0 0 2px rgba(214, 69, 80, 0.2), inset 0 0 0 1.5px rgba(214, 69, 80, 0.25);
+  animation: stampAppear 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  user-select: none;
+}
+
+.stamp-fraction {
+  font-family: 'Patrick Hand', cursive, sans-serif;
+  font-size: 2.8rem;
+  font-weight: bold;
+  line-height: 1;
+  text-shadow: 1px 1px 0px rgba(214, 69, 80, 0.2);
+}
+
+.stamp-score-100 {
+  font-family: 'Patrick Hand', cursive, sans-serif;
+  font-size: 1.25rem;
+  font-weight: bold;
+  margin-top: 2px;
+  border-top: 1.5px solid #D64550;
+  padding-top: 2px;
+  width: 80%;
+  text-align: center;
+}
+
+@keyframes stampAppear {
+  0% {
+    transform: scale(2.2) rotate(-20deg);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1) rotate(-6deg);
+    opacity: 1;
+  }
+}

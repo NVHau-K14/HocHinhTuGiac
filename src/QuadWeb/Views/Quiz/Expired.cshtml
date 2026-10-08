@@ -1,0 +1,16 @@
+@{
+    ViewData["Title"] = "Bài kiểm tra không khả dụng";
+}
+
+<div class="text-center py-5">
+    <div style="font-size: 4rem; color: var(--color-pencil);">⌛</div>
+    <h1 style="color: var(--color-ink); font-family: 'Patrick Hand', cursive; font-size: 2.2rem; margin-top: 12px;">
+        Phiên làm bài đã hết hạn hoặc không tồn tại
+    </h1>
+    <p style="color: var(--color-pencil); max-width: 500px; margin: 12px auto 24px auto; font-size: 1.05rem;">
+        @(ViewBag.Message ?? "Kết quả bài kiểm tra chỉ được lưu trữ tạm thời trong 60 phút để bảo mật. Bạn có thể bắt đầu một bài kiểm tra mới bất kỳ lúc nào!")
+    </p>
+    <a href="/quiz" class="btn-pen" style="font-size: 1.25rem; padding: 8px 24px;">
+        Bắt đầu bài kiểm tra mới &rarr;
+    </a>
+</div>

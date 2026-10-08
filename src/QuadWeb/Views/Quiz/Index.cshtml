@@ -1,0 +1,262 @@
+@model List<QuadWeb.Models.QuestionDto>
+@{
+    ViewData["Title"] = "Bài kiểm tra tổng hợp 10 câu (Quiz)";
+    var quizId = ViewBag.QuizId as string ?? string.Empty;
+}
+
+<div class="mb-3">
+    <div class="d-flex align-items-center gap-2 mb-2">
+        <a href="/" class="text-decoration-none small" style="color: var(--color-pencil);">&larr; Về trang chủ</a>
+        <span class="text-muted">|</span>
+        <span class="small text-muted">Kiểm tra tổng hợp</span>
+    </div>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <h1 style="color: var(--color-ink); margin-bottom: 0;">
+            <span style="color: var(--color-margin);">✎</span> Bài kiểm tra tổng hợp: 8 Hình Tứ Giác
+        </h1>
+        <span class="badge" style="background-color: var(--color-ink); color: #fff; font-size: 0.95rem; padding: 6px 12px;">
+            Mã đề: #@quizId.Substring(0, Math.Min(8, quizId.Length))
+        </span>
+    </div>
+    <p style="color: var(--color-pencil); margin-top: 6px; margin-bottom: 0;">
+        Đề thi gồm 10 câu hỏi trắc nghiệm bao phủ toàn bộ 8 hình tứ giác. Điểm số sẽ được hệ thống chấm tự động và ghi nhận vào Bảng điểm lớp!
+    </p>
+</div>
+
+<!-- Thanh tiến độ dính theo màn hình cuộn -->
+<div class="quiz-progress-sticky">
+    <div class="d-flex justify-content-between align-items-center mb-1">
+        <span style="font-family: 'Patrick Hand', cursive; font-size: 1.25rem; color: var(--color-ink);">
+            Tiến độ hoàn thành: <strong id="progress-text">0 / @Model.Count câu</strong>
+        </span>
+        <span class="small text-muted" id="unanswered-count-text">Còn lại: @Model.Count câu</span>
+    </div>
+    
+    <div class="quiz-progress-bar-wrap">
+        <div class="quiz-progress-bar" id="quiz-progress-bar" style="width: 0%;"></div>
+    </div>
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div class="quiz-nav-pills">
+            @for (int i = 0; i < Model.Count; i++)
+            {
+                var qNum = i + 1;
+                <a href="#quiz-card-@Model[i].Id" class="quiz-pill-btn" id="pill-@Model[i].Id" title="Chuyển đến câu @qNum">
+                    @qNum
+                </a>
+            }
+        </div>
+        <button type="button" id="btn-submit-quiz" class="btn-pen" style="font-size: 1.15rem; padding: 6px 20px;">
+            Nộp bài kiểm tra ✍
+        </button>
+    </div>
+</div>
+
+<form id="quiz-form">
+    <div class="quiz-questions-list">
+        @for (int i = 0; i < Model.Count; i++)
+        {
+            var q = Model[i];
+            var qIndex = i + 1;
+            var badgeClass = q.Type switch
+            {
+                "THEORY" => "badge-theory",
+                "CALCULATION" => "badge-calc",
+                "RECOGNITION" => "badge-recog",
+                _ => "badge-theory"
+            };
+            var typeText = q.Type switch
+            {
+                "THEORY" => "Lý thuyết",
+                "CALCULATION" => "Tính toán",
+                "RECOGNITION" => "Nhận biết",
+                _ => q.Type
+            };
+
+            <div class="question-card" id="quiz-card-@q.Id" data-question-id="@q.Id">
+                <div class="question-header">
+                    <div>
+                        <strong style="color: var(--color-ink); font-size: 1.2rem; font-family: 'Patrick Hand', cursive;">
+                            Câu @qIndex / @Model.Count
+                        </strong>
+                        <span class="question-badge @badgeClass ms-2">@typeText</span>
+                        <span class="small text-muted ms-2">&bull; @q.ShapeName</span>
+                    </div>
+                    <span class="small text-muted">Độ khó: @(new string('★', q.Difficulty))</span>
+                </div>
+
+                <div class="question-content">
+                    @q.Content
+                </div>
+
+                <div class="options-grid" data-qid="@q.Id">
+                    @{
+                        char optLabel = 'A';
+                    }
+                    @foreach (var opt in q.Options)
+                    {
+                        <label class="option-label" data-opt-id="@opt.Id">
+                            <input type="radio" name="opt_@q.Id" value="@opt.Id" />
+                            <span class="option-circle">@optLabel</span>
+                            <span class="option-text">@opt.Content</span>
+                        </label>
+                        optLabel++;
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="text-center py-4 mb-5">
+        <button type="button" id="btn-submit-quiz-bottom" class="btn-pen" style="font-size: 1.35rem; padding: 10px 32px;">
+            Hoàn tất & Nộp bài kiểm tra ✍
+        </button>
+    </div>
+</form>
+
+<!-- Modal xác nhận nộp bài phong cách sổ vở -->
+<div id="quiz-confirm-modal" class="graph-modal-overlay" style="display: none;">
+    <div class="graph-modal-container" style="max-width: 500px; text-align: center;">
+        <h3 id="modal-confirm-title" style="font-family: 'Patrick Hand', cursive; color: var(--color-ink); font-size: 1.8rem; margin-bottom: 12px;">
+            ✎ Xác nhận nộp bài kiểm tra
+        </h3>
+        <p id="modal-confirm-body" style="font-size: 1.05rem; color: var(--color-text); margin-bottom: 24px; line-height: 1.5;">
+        </p>
+        <div class="d-flex justify-content-center gap-3">
+            <button type="button" id="btn-modal-cancel" class="btn-pen-outline" style="font-size: 1.1rem; padding: 6px 20px;">
+                Quay lại làm tiếp
+            </button>
+            <button type="button" id="btn-modal-confirm-submit" class="btn-pen" style="font-size: 1.1rem; padding: 6px 24px;">
+                Nộp bài ngay ✍
+            </button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const quizId = '@quizId';
+        const totalQuestions = @Model.Count;
+        const answeredMap = new Map();
+        const modal = document.getElementById('quiz-confirm-modal');
+        const modalBody = document.getElementById('modal-confirm-body');
+        const btnCancel = document.getElementById('btn-modal-cancel');
+        const btnConfirm = document.getElementById('btn-modal-confirm-submit');
+
+        // Xử lý chọn đáp án
+        document.querySelectorAll('.option-label').forEach(label => {
+            label.addEventListener('click', function () {
+                const grid = this.closest('.options-grid');
+                const qid = grid.getAttribute('data-qid');
+                const radio = this.querySelector('input[type="radio"]');
+                radio.checked = true;
+
+                grid.querySelectorAll('.option-label').forEach(l => l.classList.remove('selected'));
+                this.classList.add('selected');
+
+                // Lưu trạng thái đã trả lời
+                answeredMap.set(qid, radio.value);
+
+                // Cập nhật pill
+                const pill = document.getElementById(`pill-${qid}`);
+                if (pill) {
+                    pill.classList.add('answered');
+                }
+
+                updateProgress();
+            });
+        });
+
+        function updateProgress() {
+            const count = answeredMap.size;
+            const percent = Math.round((count / totalQuestions) * 100);
+
+            const progText = document.getElementById('progress-text');
+            const unansText = document.getElementById('unanswered-count-text');
+            const progBar = document.getElementById('quiz-progress-bar');
+
+            if (progText) progText.innerText = `${count} / ${totalQuestions} câu`;
+            if (unansText) unansText.innerText = `Còn lại: ${totalQuestions - count} câu`;
+            if (progBar) progBar.style.width = `${percent}%`;
+        }
+
+        // Mở modal xác nhận
+        function openSubmitModal() {
+            const unansweredList = [];
+            document.querySelectorAll('.question-card').forEach((card, idx) => {
+                const qid = card.getAttribute('data-question-id');
+                if (!answeredMap.has(qid)) {
+                    unansweredList.push(idx + 1);
+                }
+            });
+
+            if (unansweredList.length > 0) {
+                modalBody.innerHTML = `Bạn vẫn còn <strong>${unansweredList.length} câu</strong> chưa trả lời (Câu: ${unansweredList.join(', ')}).<br><br>Bạn có chắc chắn muốn nộp bài ngay bây giờ?`;
+            } else {
+                modalBody.innerHTML = `Bạn đã hoàn tất <strong>${totalQuestions}/${totalQuestions} câu hỏi</strong>.<br><br>Bạn có chắc chắn muốn nộp bài để xem điểm và lời phê của giáo viên?`;
+            }
+
+            modal.style.display = 'flex';
+        }
+
+        btnCancel.addEventListener('click', function () {
+            modal.style.display = 'none';
+        });
+
+        btnConfirm.addEventListener('click', function () {
+            modal.style.display = 'none';
+            executeSubmit();
+        });
+
+        async function executeSubmit() {
+            const answers = [];
+            document.querySelectorAll('.question-card').forEach(card => {
+                const qid = card.getAttribute('data-question-id');
+                const selectedOpt = answeredMap.get(qid) || null;
+                answers.push({
+                    questionId: qid,
+                    selectedOptionId: selectedOpt
+                });
+            });
+
+            const submitBtnTop = document.getElementById('btn-submit-quiz');
+            const submitBtnBottom = document.getElementById('btn-submit-quiz-bottom');
+            if (submitBtnTop) { submitBtnTop.disabled = true; submitBtnTop.innerText = 'Đang chấm điểm...'; }
+            if (submitBtnBottom) { submitBtnBottom.disabled = true; submitBtnBottom.innerText = 'Đang chấm điểm...'; }
+
+            try {
+                const response = await fetch('/quiz/submit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        quizId: quizId,
+                        answers: answers
+                    })
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.error || 'Có lỗi xảy ra khi nộp bài.');
+                }
+
+                const data = await response.json();
+                if (data.success && data.quizId) {
+                    window.location.href = `/quiz/result/${data.quizId}`;
+                } else {
+                    throw new Error('Không nhận được mã kết quả từ máy chủ.');
+                }
+            } catch (err) {
+                alert('Lỗi khi nộp bài: ' + err.message);
+                if (submitBtnTop) { submitBtnTop.disabled = false; submitBtnTop.innerText = 'Nộp bài kiểm tra ✍'; }
+                if (submitBtnBottom) { submitBtnBottom.disabled = false; submitBtnBottom.innerText = 'Hoàn tất & Nộp bài kiểm tra ✍'; }
+            }
+        }
+
+        document.getElementById('btn-submit-quiz')?.addEventListener('click', openSubmitModal);
+        document.getElementById('btn-submit-quiz-bottom')?.addEventListener('click', openSubmitModal);
+    });
+</script>
+}

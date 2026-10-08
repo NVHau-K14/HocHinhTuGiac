@@ -1,0 +1,241 @@
+@model List<QuadWeb.Models.QuestionDto>
+@{
+    var shape = ViewBag.Shape as QuadWeb.Models.Shape;
+    ViewData["Title"] = $"Luyện tập: {shape?.Name ?? "Tứ giác"}";
+}
+
+<div class="mb-4">
+    <div class="d-flex align-items-center gap-2 mb-2">
+        <a href="/practice" class="text-decoration-none small" style="color: var(--color-pencil);">&larr; Danh sách hình</a>
+        <span class="text-muted">|</span>
+        <a href="/shapes/@shape?.Slug" class="text-decoration-none small" style="color: var(--color-pencil);">Xem lý thuyết @shape?.Name</a>
+    </div>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div>
+            <h1 style="color: var(--color-ink); margin-bottom: 4px;">
+                <span style="color: var(--color-margin);">✎</span> Luyện tập: @shape?.Name
+            </h1>
+            <p style="color: var(--color-pencil); margin-bottom: 0;">
+                Gồm 5 câu hỏi củng cố kiến thức. Chọn đáp án và bấm <strong>Kiểm tra</strong> để xem kết quả ngay!
+            </p>
+        </div>
+        <div>
+            <a href="/shapes/@shape?.Slug" class="btn-pen-outline" style="font-size: 1rem;">
+                Tra cứu lý thuyết @shape?.Name
+            </a>
+        </div>
+    </div>
+</div>
+
+@if (Model == null || !Model.Any())
+{
+    <div class="alert alert-warning">
+        Hiện chưa có câu hỏi luyện tập cho hình này. Vui lòng quay lại sau!
+    </div>
+}
+else
+{
+    <div class="practice-container">
+        @for (int i = 0; i < Model.Count; i++)
+        {
+            var q = Model[i];
+            var qIndex = i + 1;
+            var badgeClass = q.Type switch
+            {
+                "THEORY" => "badge-theory",
+                "CALCULATION" => "badge-calc",
+                "RECOGNITION" => "badge-recog",
+                _ => "badge-theory"
+            };
+            var typeText = q.Type switch
+            {
+                "THEORY" => "Lý thuyết",
+                "CALCULATION" => "Tính toán",
+                "RECOGNITION" => "Dấu hiệu nhận biết",
+                _ => q.Type
+            };
+
+            <div class="question-card" id="qcard-@q.Id" data-question-id="@q.Id">
+                <div class="question-header">
+                    <div>
+                        <strong style="color: var(--color-ink); font-size: 1.15rem; font-family: 'Patrick Hand', cursive;">
+                            Câu @qIndex / @Model.Count
+                        </strong>
+                        <span class="question-badge @badgeClass ms-2">@typeText</span>
+                    </div>
+                    <span class="small text-muted">Độ khó: @(new string('★', q.Difficulty))</span>
+                </div>
+
+                <div class="question-content">
+                    @q.Content
+                </div>
+
+                <div class="options-grid" data-qid="@q.Id">
+                    @{
+                        char optLabel = 'A';
+                    }
+                    @foreach (var opt in q.Options)
+                    {
+                        <label class="option-label" data-opt-id="@opt.Id">
+                            <input type="radio" name="option_@q.Id" value="@opt.Id" />
+                            <span class="option-circle">@optLabel</span>
+                            <span class="option-text">@opt.Content</span>
+                        </label>
+                        optLabel++;
+                    }
+                </div>
+
+                <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+                    <button type="button" class="btn-pen btn-check-answer" data-qid="@q.Id" style="font-size: 1.05rem; padding: 5px 16px;">
+                        Kiểm tra đáp án
+                    </button>
+                    <button type="button" class="btn-pen-outline btn-toggle-exp" data-qid="@q.Id" style="font-size: 1.05rem; padding: 5px 14px; display: none;">
+                        Xem lời giải
+                    </button>
+                    @if (qIndex < Model.Count)
+                    {
+                        var nextQId = Model[qIndex].Id;
+                        <a href="#qcard-@nextQId" class="ms-auto small text-muted text-decoration-none next-question-link">
+                            Câu tiếp theo &darr;
+                        </a>
+                    }
+                    else
+                    {
+                        <a href="/quiz" class="ms-auto btn-pen-outline" style="font-size: 1rem;">
+                            Chuyển sang làm Quiz 10 câu &rarr;
+                        </a>
+                    }
+                </div>
+
+                <!-- Hộp kết quả kiểm tra -->
+                <div class="practice-feedback" id="feedback-@q.Id">
+                    <div class="feedback-status fw-bold mb-1"></div>
+                    <div class="feedback-correct-text small"></div>
+                    <div class="explanation-box" id="exp-@q.Id" style="display: none;"></div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@section Scripts {
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Xử lý chọn option
+        document.querySelectorAll('.option-label').forEach(label => {
+            label.addEventListener('click', function () {
+                const qid = this.closest('.options-grid').getAttribute('data-qid');
+                const radio = this.querySelector('input[type="radio"]');
+                radio.checked = true;
+
+                // Xóa selected các sibling
+                const grid = this.closest('.options-grid');
+                grid.querySelectorAll('.option-label').forEach(l => l.classList.remove('selected'));
+                this.classList.add('selected');
+            });
+        });
+
+        // Xử lý nút Kiểm tra đáp án
+        document.querySelectorAll('.btn-check-answer').forEach(btn => {
+            btn.addEventListener('click', async function () {
+                const qid = this.getAttribute('data-qid');
+                const grid = document.querySelector(`.options-grid[data-qid="${qid}"]`);
+                const checkedRadio = grid.querySelector('input[type="radio"]:checked');
+
+                if (!checkedRadio) {
+                    alert('Bạn vui lòng chọn một phương án trả lời trước khi kiểm tra!');
+                    return;
+                }
+
+                const selectedOptionId = checkedRadio.value;
+                this.disabled = true;
+                this.innerText = 'Đang kiểm tra...';
+
+                try {
+                    const response = await fetch('/api/practice/check', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            questionId: qid,
+                            selectedOptionId: selectedOptionId
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Lỗi từ máy chủ khi kiểm tra đáp án.');
+                    }
+
+                    const res = await response.json();
+                    const feedback = document.getElementById(`feedback-${qid}`);
+                    const statusElem = feedback.querySelector('.feedback-status');
+                    const correctElem = feedback.querySelector('.feedback-correct-text');
+                    const expBox = document.getElementById(`exp-${qid}`);
+                    const toggleExpBtn = document.querySelector(`.btn-toggle-exp[data-qid="${qid}"]`);
+
+                    feedback.classList.remove('feedback-correct', 'feedback-incorrect');
+                    feedback.classList.add('show');
+
+                    // Highlight options
+                    grid.querySelectorAll('.option-label').forEach(l => {
+                        const optId = l.getAttribute('data-opt-id');
+                        l.classList.remove('is-correct', 'is-incorrect');
+                        if (optId === res.correctOptionId) {
+                            l.classList.add('is-correct');
+                        } else if (optId === selectedOptionId && !res.isCorrect) {
+                            l.classList.add('is-incorrect');
+                        }
+                    });
+
+                    if (res.isCorrect) {
+                        feedback.classList.add('feedback-correct');
+                        statusElem.innerHTML = '✓ Chính xác! Bạn đã chọn đúng.';
+                        correctElem.innerHTML = '';
+                    } else {
+                        feedback.classList.add('feedback-incorrect');
+                        statusElem.innerHTML = '✗ Chưa chính xác!';
+                        correctElem.innerHTML = `Đáp án đúng là: <strong>${res.correctOptionContent}</strong>`;
+                    }
+
+                    // Lưu lời giải
+                    expBox.innerHTML = `<strong>Lời giải chi tiết:</strong><br>${res.explanation}`;
+                    if (window.renderMathInElement) {
+                        window.renderMathInElement(expBox, {
+                            delimiters: [
+                                {left: '$$', right: '$$', display: true},
+                                {left: '$', right: '$', display: false}
+                            ]
+                        });
+                    }
+
+                    toggleExpBtn.style.display = 'inline-block';
+                    toggleExpBtn.innerText = 'Xem lời giải';
+                    expBox.style.display = 'none';
+
+                } catch (err) {
+                    alert('Lỗi: ' + err.message);
+                } finally {
+                    this.disabled = false;
+                    this.innerText = 'Kiểm tra lại';
+                }
+            });
+        });
+
+        // Xử lý nút Bật/Tắt Lời giải
+        document.querySelectorAll('.btn-toggle-exp').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const qid = this.getAttribute('data-qid');
+                const expBox = document.getElementById(`exp-${qid}`);
+                if (expBox.style.display === 'none') {
+                    expBox.style.display = 'block';
+                    this.innerText = 'Ẩn lời giải';
+                } else {
+                    expBox.style.display = 'none';
+                    this.innerText = 'Xem lời giải';
+                }
+            });
+        });
+    });
+</script>
+}

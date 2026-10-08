@@ -13,10 +13,13 @@ builder.Services.Configure<Neo4jSettings>(builder.Configuration.GetSection("Neo4
 builder.Services.AddSingleton<INeo4jDriverService, Neo4jDriverService>();
 
 // Repositories & Services
+builder.Services.AddMemoryCache();
 builder.Services.AddScoped<IShapeRepository, ShapeRepository>();
 builder.Services.AddScoped<IShapeService, ShapeService>();
 builder.Services.AddScoped<ILearnerRepository, LearnerRepository>();
 builder.Services.AddScoped<ILearnerService, LearnerService>();
+builder.Services.AddScoped<IQuestionRepository, QuestionRepository>();
+builder.Services.AddScoped<IQuizService, QuizService>();
 
 var app = builder.Build();
 
