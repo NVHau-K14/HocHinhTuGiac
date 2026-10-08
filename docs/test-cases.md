@@ -1,0 +1,44 @@
+# DANH SÁCH KỊCH BẢN KIỂM THỬ (TEST CASES)
+> **Dự án: Website Học Hình Học Phẳng: Tứ Giác**  
+> **Nền tảng: ASP.NET Core MVC & Neo4j Graph Database**
+
+---
+
+## 1. Tổng quan kiểm thử
+
+Tài liệu này mô tả danh sách các kịch bản kiểm thử (Test Cases) nhằm xác minh và nghiệm thu toàn diện các yêu cầu nghiệp vụ (Product Backlog Items - PBI từ 01 đến 27) đã được quy định trong tài liệu đặc tả dự án.
+
+- **Môi trường kiểm thử:** 
+  - Hệ điều hành: Windows 11
+  - Runtime: .NET 9.0 SDK
+  - Database: Neo4j 5.x Community / Desktop (Bolt port 7687)
+  - Trình duyệt kiểm thử: Google Chrome / Microsoft Edge (Độ phân giải Desktop: 1280x800px; Mobile: 360x640px)
+
+---
+
+## 2. Bảng ma trận kịch bản kiểm thử chi tiết
+
+| Mã TC | PBI tham chiếu | Tên kịch bản kiểm thử | Tiền điều kiện | Các bước thực hiện | Dữ liệu đầu vào | Kết quả mong đợi | Kết quả thực tế | Trạng thái |
+| :---: | :---: | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
+| **TC-01** | PBI-01, PBI-02 | Kết nối Neo4j & Xử lý ngoại lệ kết nối | Neo4j đang chạy | 1. Cấu hình URI và mật khẩu đúng trong `appsettings.Development.json`.<br>2. Khởi chạy ứng dụng Web.<br>3. Truy cập `http://localhost:5200`. | Bolt URI `bolt://127.0.0.1:7687` | Trang chủ hiển thị bình thường; không xảy ra lỗi kết nối. Nếu cố ý ngắt CSDL, hiển thị trang lỗi thân thiện có nút Thử lại, không lộ credential. | Kết nối thành công, không phát sinh lỗi. Trang lỗi thân thiện hoạt động chuẩn khi ngắt kết nối. | **PASS** |
+| **TC-02** | PBI-03 | Định danh người học qua Cookie ẩn danh | Người dùng truy cập lần đầu | 1. Mở trình duyệt ở chế độ ẩn danh.<br>2. Truy cập trang web.<br>3. Kiểm tra mục Application / Cookies trong Developer Tools. | Request HTTP GET `/` | Tạo cookie `quad_learner_id` có cờ `HttpOnly`, `SameSite=Lax`, thời hạn 365 ngày. Tự động gán tên "Người học" trên thanh menu. | Cookie `quad_learner_id` được tạo tự động với đầy đủ cờ bảo mật; hiển thị "Người học" trên navbar. | **PASS** |
+| **TC-03** | PBI-04 | Tính toàn vẹn và tính lặp lại của dữ liệu Seed (Idempotency) | CSDL rỗng hoặc đã có dữ liệu | 1. Chạy `python db/apply_seed.py`.<br>2. Chạy lại lần 2.<br>3. Chạy kiểm chứng `python db/run_verify.py`. | Tệp `db/seed.cypher` | Số lượng node và quan hệ không bị nhân đôi: Đúng 8 Shape, 10 cạnh IS_A, 40 câu hỏi, 8 định nghĩa. 10/10 tiêu chí ĐẠT. | Chạy lặp lại 2 lần không sinh trùng lặp. Đạt 10/10 tiêu chí kiểm tra dữ liệu. | **PASS** |
+| **TC-04** | PBI-05 | 8 Hình tứ giác SVG vẽ tay có hiệu ứng bút chì | Truy cập trang chủ `/` | 1. Mở trang chủ.<br>2. Quan sát 8 hình học.<br>3. Rê chuột vào từng hình. | Độ phân giải 1280px và 360px | 8 hình được vẽ bằng SVG thủ công với nhãn đỉnh A, B, C, D rõ ràng, có hiệu ứng vẽ nét bút chì (`stroke-dashoffset` ~1.2s). | 8 hình hiển thị đẹp mắt, hiệu ứng nét vẽ mượt mà trên cả máy tính và điện thoại. | **PASS** |
+| **TC-05** | PBI-06, PBI-07 | Hiển thị chi tiết hình & Kế thừa tính chất qua `IS_A*0..` | Đã nạp seed vào Neo4j | 1. Truy cập `/shapes/hinh-chu-nhat`.<br>2. Quan sát mục Định nghĩa và Tính chất. | Slug `hinh-chu-nhat` | Định nghĩa tô màu dạ quang vàng. Tính chất trực tiếp và tính chất kế thừa từ Hình bình hành hiển thị tách bạch rõ nguồn gốc kế thừa. Công thức KaTeX render đẹp. | Định nghĩa dạ quang vàng; phân tách rõ tính chất trực tiếp và kế thừa; công thức KaTeX không lỗi cú pháp. | **PASS** |
+| **TC-06** | PBI-08 | Sơ đồ phân cấp tương tác (vis-network) | Đang ở trang chủ hoặc trang hình | 1. Nhấp nút "Xem sơ đồ phân cấp đầy đủ".<br>2. Thử kéo thả node và lăn chuột phóng to/thu nhỏ.<br>3. Bấm nút Đóng. | Sự kiện Click mở Modal | Cửa sổ modal mở ra đồ thị 5 tầng (Tứ giác ở đỉnh, Hình vuông ở đáy). Thao tác mượt mà; bấm đóng hoặc ESC đóng modal thành công. | Đồ thị vis-network phân cấp 5 tầng chuẩn xác; tương tác kéo thả mượt mà; hỗ trợ đóng nhanh. | **PASS** |
+| **TC-07** | PBI-09, PBI-10, PBI-11, PBI-12 | Luyện tập theo hình & Kiểm tra đáp án tức thì | Vào `/practice` | 1. Chọn "Hình thang".<br>2. Chọn một đáp án cho Câu 1.<br>3. Bấm "Kiểm tra đáp án".<br>4. Bấm "Xem lời giải". | Câu hỏi `Q_THANG_01` | Hiển thị ngay trạng thái Đúng (xanh lá) hoặc Sai (đỏ gạch chéo). Nút "Xem lời giải" mở khung màu dạ quang chứa giải thích toán học chi tiết. | API `/api/practice/check` phản hồi tức thì, hiển thị đúng/sai chuẩn xác và mở khung lời giải chi tiết. | **PASS** |
+| **TC-08** | PBI-13, PBI-14, PBI-15 | Tạo Quiz 10 câu & Chấm điểm an toàn tại Backend | Vào `/quiz` | 1. Bắt đầu bài Quiz.<br>2. Quan sát thanh tiến độ khi chọn câu hỏi.<br>3. Chọn đáp án cho các câu.<br>4. Bấm "Hoàn tất & Nộp bài kiểm tra". | Payload submit `{ quizId, answers: [...] }` | 10 câu bao phủ đủ 8 hình. Thanh tiến độ chạy từ `0/10` đến `10/10`. Trình duyệt KHÔNG gửi điểm; Backend tự chấm theo CSDL (thang 100). | Sinh 10 câu bao quát 8 hình; thanh tiến độ nhảy chuẩn; server chấm điểm chính xác và lưu phiên an toàn. | **PASS** |
+| **TC-09** | PBI-16 | Xem kết quả Quiz với Con dấu điểm đỏ viết tay | Nộp bài Quiz thành công | 1. Chờ chuyển hướng sang `/quiz/result/{quizId}`.<br>2. Quan sát khung kết quả và danh sách 10 câu. | Mã `quizId` hợp lệ | Hiển thị con dấu elip mực đỏ viết tay (`.../10` kèm `.../100 ĐIỂM`) nghiêng nhẹ như cô giáo chấm bài. Lời nhận xét sư phạm phù hợp. Xem lại 10 câu có lời giải. | Con dấu điểm đỏ xoay nghiêng -6deg xuất hiện sinh động; lời phê tương ứng số điểm; 10 câu rà soát chi tiết. | **PASS** |
+| **TC-10** | PBI-17, PBI-18 | Bảng điểm lớp Top 10 & Đổi tên hiển thị | Truy cập `/leaderboard` | 1. Xem bảng xếp hạng.<br>2. Nhập tên mới "Nguyễn Văn Toán" vào ô đổi tên.<br>3. Bấm "Lưu tên ✎". | Họ tên mới: `Nguyễn Văn Toán` | Bảng điểm xếp hạng Top 10 học sinh có điểm cao nhất; người học hiện tại được tô màu vàng. Đổi tên thành công, tên mới hiển thị trên menu và bảng điểm. | Tên được cập nhật vào node `Learner` trong Neo4j; chống XSS chuẩn; dòng người học được tô dạ quang nổi bật. | **PASS** |
+| **TC-11** | PBI-19 | Tra cứu & Tìm kiếm kiến thức đa thực thể | Truy cập `/search` | 1. Nhập từ khóa "đường chéo".<br>2. Bấm "Tìm kiếm 🔍".<br>3. Nhập từ khóa không dấu "vuong goc". | Từ khóa tiếng Việt có dấu và không dấu | Trả về danh sách kết quả chứa từ khóa trên Hình, Tính chất, Định lý, Nhận biết, Công thức. Có nút chuyển đến lý thuyết hình liên quan. | Tìm kiếm chính xác cả có dấu và không dấu, phân loại badge rõ ràng; nhấp vào link chuyển đúng trang hình. | **PASS** |
+| **TC-12** | PBI-08 (Should) | So sánh hai hình & Phân tích quan hệ phả hệ Neo4j | Truy cập `/compare` | 1. Chọn Hình 1: "Hình thoi", Hình 2: "Hình chữ nhật".<br>2. Bấm "So sánh ✎".<br>3. Đổi sang "Hình bình hành" vs "Hình vuông". | Cặp hình so sánh | Phân tích quan hệ phả hệ (cha-con hoặc tổ tiên chung gần nhất LCA). Bảng 2 cột đối chiếu tính chất riêng, khung tính chất chung và công thức. | Tự động xác định quan hệ phả hệ qua đồ thị Cypher; chỉ rõ tính chất chung và tính chất riêng của từng hình. | **PASS** |
+| **TC-13** | PBI-27 | Tối ưu hiển thị Responsive trên màn hình 360px Mobile | Mở DevTools thiết lập màn hình 360x640px | 1. Duyệt qua toàn bộ các trang: `/`, `/shapes`, `/shapes/hinh-thoi`, `/practice`, `/quiz`, `/leaderboard`, `/compare`.<br>2. Kiểm tra thanh cuộn ngang. | Kích thước màn hình: 360px | Không bị tràn giao diện theo chiều ngang (không có lỗi overflow-x horizontal scroll ngoài ý muốn); công thức toán và bảng biểu có thanh cuộn cục bộ an toàn. | Toàn bộ các trang co giãn hoàn hảo trên 360px; bảng điểm bọc trong `table-responsive`; công thức KaTeX cuộn mượt. | **PASS** |
+
+---
+
+## 3. Kết luận nghiệm thu kiểm thử
+
+- **Tổng số kịch bản kiểm thử:** 13/13 Test Cases.
+- **Số kịch bản ĐẠT (PASS):** 13/13 (100%).
+- **Số kịch bản KHÔNG ĐẠT (FAIL):** 0 (0%).
+- **Đánh giá tổng thể:** Toàn bộ các chức năng từ Cốt lõi (Must) đến Nâng cao (Should) đều hoạt động ổn định, chính xác theo đúng yêu cầu đề tài, đảm bảo tính bảo mật và trải nghiệm thẩm mỹ cao cho người học.
