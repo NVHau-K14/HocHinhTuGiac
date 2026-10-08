@@ -36,4 +36,14 @@ public class ShapeService : IShapeService
     {
         return _shapeRepository.GetGraphDataAsync();
     }
+
+    public Task<List<SearchResultItem>> SearchAsync(string query)
+    {
+        return _shapeRepository.SearchAsync(query);
+    }
+
+    public Task<CompareViewModel> CompareShapesAsync(string slug1, string slug2)
+    {
+        return _shapeRepository.CompareShapesAsync(slug1, slug2);
+    }
 }

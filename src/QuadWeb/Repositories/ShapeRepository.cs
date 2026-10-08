@@ -315,4 +315,245 @@ public class ShapeRepository : IShapeRepository
 
         return result;
     }
+
+    public async Task<List<SearchResultItem>> SearchAsync(string query)
+    {
+        var list = new List<SearchResultItem>();
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return list;
+        }
+
+        var q = query.Trim();
+        await using var session = _driverService.CreateSession();
+
+        // 1. Tìm trong Shape
+        var shapeQuery = @"
+            MATCH (s:Shape)
+            WHERE toLower(s.name) CONTAINS toLower($q)
+               OR toLower(s.searchText) CONTAINS toLower($q)
+               OR toLower(s.shortDescription) CONTAINS toLower($q)
+            RETURN s.name AS title, s.shortDescription AS snippet, s.name AS shapeName, s.slug AS shapeSlug
+            ORDER BY s.sortOrder
+        ";
+        var shapeCursor = await session.RunAsync(shapeQuery, new { q });
+        while (await shapeCursor.FetchAsync())
+        {
+            list.Add(new SearchResultItem
+            {
+                Category = "Hình học",
+                Title = shapeCursor.Current["title"].As<string>(),
+                Snippet = shapeCursor.Current["snippet"].As<string>(),
+                ShapeName = shapeCursor.Current["shapeName"].As<string>(),
+                ShapeSlug = shapeCursor.Current["shapeSlug"].As<string>()
+            });
+        }
+
+        // 2. Tìm trong Property
+        var propQuery = @"
+            MATCH (s:Shape)-[:HAS_PROPERTY]->(p:Property)
+            WHERE toLower(p.content) CONTAINS toLower($q)
+            RETURN DISTINCT p.content AS title, p.content AS snippet, s.name AS shapeName, s.slug AS shapeSlug
+        ";
+        var propCursor = await session.RunAsync(propQuery, new { q });
+        while (await propCursor.FetchAsync())
+        {
+            list.Add(new SearchResultItem
+            {
+                Category = "Tính chất",
+                Title = propCursor.Current["title"].As<string>(),
+                Snippet = propCursor.Current["snippet"].As<string>(),
+                ShapeName = propCursor.Current["shapeName"].As<string>(),
+                ShapeSlug = propCursor.Current["shapeSlug"].As<string>()
+            });
+        }
+
+        // 3. Tìm trong Definition
+        var defQuery = @"
+            MATCH (s:Shape)-[:DEFINED_AS]->(d:Definition)
+            WHERE toLower(d.content) CONTAINS toLower($q)
+            RETURN d.content AS title, d.content AS snippet, s.name AS shapeName, s.slug AS shapeSlug
+        ";
+        var defCursor = await session.RunAsync(defQuery, new { q });
+        while (await defCursor.FetchAsync())
+        {
+            list.Add(new SearchResultItem
+            {
+                Category = "Định nghĩa",
+                Title = defCursor.Current["title"].As<string>(),
+                Snippet = defCursor.Current["snippet"].As<string>(),
+                ShapeName = defCursor.Current["shapeName"].As<string>(),
+                ShapeSlug = defCursor.Current["shapeSlug"].As<string>()
+            });
+        }
+
+        // 4. Tìm trong Recognition
+        var recQuery = @"
+            MATCH (s:Shape)-[:RECOGNIZED_BY]->(r:Recognition)
+            WHERE toLower(r.content) CONTAINS toLower($q)
+            RETURN r.content AS title, r.content AS snippet, s.name AS shapeName, s.slug AS shapeSlug
+        ";
+        var recCursor = await session.RunAsync(recQuery, new { q });
+        while (await recCursor.FetchAsync())
+        {
+            list.Add(new SearchResultItem
+            {
+                Category = "Dấu hiệu nhận biết",
+                Title = recCursor.Current["title"].As<string>(),
+                Snippet = recCursor.Current["snippet"].As<string>(),
+                ShapeName = recCursor.Current["shapeName"].As<string>(),
+                ShapeSlug = recCursor.Current["shapeSlug"].As<string>()
+            });
+        }
+
+        // 5. Tìm trong Theorem
+        var theoQuery = @"
+            MATCH (s:Shape)-[:HAS_THEOREM]->(t:Theorem)
+            WHERE toLower(t.title) CONTAINS toLower($q) OR toLower(t.content) CONTAINS toLower($q)
+            RETURN t.title AS title, t.content AS snippet, s.name AS shapeName, s.slug AS shapeSlug
+        ";
+        var theoCursor = await session.RunAsync(theoQuery, new { q });
+        while (await theoCursor.FetchAsync())
+        {
+            list.Add(new SearchResultItem
+            {
+                Category = "Định lý",
+                Title = theoCursor.Current["title"].As<string>(),
+                Snippet = theoCursor.Current["snippet"].As<string>(),
+                ShapeName = theoCursor.Current["shapeName"].As<string>(),
+                ShapeSlug = theoCursor.Current["shapeSlug"].As<string>()
+            });
+        }
+
+        // 6. Tìm trong Formula
+        var formQuery = @"
+            MATCH (s:Shape)-[:HAS_FORMULA]->(f:Formula)
+            WHERE toLower(f.name) CONTAINS toLower($q) OR toLower(f.expression) CONTAINS toLower($q)
+            RETURN f.name AS title, f.expression AS snippet, s.name AS shapeName, s.slug AS shapeSlug
+        ";
+        var formCursor = await session.RunAsync(formQuery, new { q });
+        while (await formCursor.FetchAsync())
+        {
+            list.Add(new SearchResultItem
+            {
+                Category = "Công thức",
+                Title = formCursor.Current["title"].As<string>(),
+                Snippet = formCursor.Current["snippet"].As<string>(),
+                ShapeName = formCursor.Current["shapeName"].As<string>(),
+                ShapeSlug = formCursor.Current["shapeSlug"].As<string>()
+            });
+        }
+
+        return list;
+    }
+
+    public async Task<CompareViewModel> CompareShapesAsync(string slug1, string slug2)
+    {
+        var result = new CompareViewModel();
+        result.AllShapes = await GetAllShapesAsync();
+
+        if (string.IsNullOrWhiteSpace(slug1) || string.IsNullOrWhiteSpace(slug2))
+        {
+            return result;
+        }
+
+        var s1 = slug1.Trim().ToLowerInvariant();
+        var s2 = slug2.Trim().ToLowerInvariant();
+
+        result.Shape1 = await GetShapeDetailAsync(s1);
+        result.Shape2 = await GetShapeDetailAsync(s2);
+
+        if (result.Shape1 == null || result.Shape2 == null)
+        {
+            return result;
+        }
+
+        // Gộp toàn bộ tính chất của mỗi hình (trực tiếp + kế thừa)
+        var allProps1 = result.Shape1.DirectProperties.Concat(result.Shape1.InheritedProperties).ToList();
+        var allProps2 = result.Shape2.DirectProperties.Concat(result.Shape2.InheritedProperties).ToList();
+
+        var propIds1 = allProps1.Select(p => p.Id).ToHashSet();
+        var propIds2 = allProps2.Select(p => p.Id).ToHashSet();
+
+        // 1. Tính chất chung
+        result.CommonProperties = allProps1.Where(p => propIds2.Contains(p.Id))
+                                           .GroupBy(p => p.Id)
+                                           .Select(g => g.First())
+                                           .ToList();
+
+        // 2. Tính chất riêng
+        result.UniqueProperties1 = allProps1.Where(p => !propIds2.Contains(p.Id))
+                                            .GroupBy(p => p.Id)
+                                            .Select(g => g.First())
+                                            .ToList();
+
+        result.UniqueProperties2 = allProps2.Where(p => !propIds1.Contains(p.Id))
+                                            .GroupBy(p => p.Id)
+                                            .Select(g => g.First())
+                                            .ToList();
+
+        // 3. Quan hệ phả hệ qua Cypher
+        await using var session = _driverService.CreateSession();
+
+        // Kiểm tra s1 kế thừa s2
+        var relQuery = @"
+            MATCH path1 = (a:Shape {slug: $s1})-[:IS_A*1..5]->(b:Shape {slug: $s2})
+            RETURN count(path1) > 0 AS s1IsChildOfS2
+        ";
+        var relCursor1 = await session.RunAsync(relQuery, new { s1, s2 });
+        bool s1IsChildOfS2 = false;
+        if (await relCursor1.FetchAsync())
+        {
+            s1IsChildOfS2 = relCursor1.Current["s1IsChildOfS2"].As<bool>();
+        }
+
+        // Kiểm tra s2 kế thừa s1
+        var relQuery2 = @"
+            MATCH path2 = (b:Shape {slug: $s2})-[:IS_A*1..5]->(a:Shape {slug: $s1})
+            RETURN count(path2) > 0 AS s2IsChildOfS1
+        ";
+        var relCursor2 = await session.RunAsync(relQuery2, new { s1, s2 });
+        bool s2IsChildOfS1 = false;
+        if (await relCursor2.FetchAsync())
+        {
+            s2IsChildOfS1 = relCursor2.Current["s2IsChildOfS1"].As<bool>();
+        }
+
+        if (s1 == s2)
+        {
+            result.RelationshipDescription = $"Đây là cùng một hình ({result.Shape1.Shape.Name}).";
+            result.LowestCommonAncestorName = result.Shape1.Shape.Name;
+        }
+        else if (s1IsChildOfS2)
+        {
+            result.RelationshipDescription = $"{result.Shape1.Shape.Name} là trường hợp đặc biệt của {result.Shape2.Shape.Name}. {result.Shape1.Shape.Name} kế thừa toàn bộ tính chất của {result.Shape2.Shape.Name} và bổ sung thêm các tính chất riêng biệt.";
+            result.LowestCommonAncestorName = result.Shape2.Shape.Name;
+        }
+        else if (s2IsChildOfS1)
+        {
+            result.RelationshipDescription = $"{result.Shape2.Shape.Name} là trường hợp đặc biệt của {result.Shape1.Shape.Name}. {result.Shape2.Shape.Name} kế thừa toàn bộ tính chất của {result.Shape1.Shape.Name} và bổ sung thêm các tính chất riêng biệt.";
+            result.LowestCommonAncestorName = result.Shape1.Shape.Name;
+        }
+        else
+        {
+            // Tìm tổ tiên chung gần nhất
+            var lcaQuery = @"
+                MATCH (a:Shape {slug: $s1})-[:IS_A*0..5]->(common:Shape)<-[:IS_A*0..5]-(b:Shape {slug: $s2})
+                RETURN common.name AS commonName, common.sortOrder AS sortOrder
+                ORDER BY sortOrder DESC
+                LIMIT 1
+            ";
+            var lcaCursor = await session.RunAsync(lcaQuery, new { s1, s2 });
+            string commonName = "Tứ giác";
+            if (await lcaCursor.FetchAsync())
+            {
+                commonName = lcaCursor.Current["commonName"].As<string>();
+            }
+
+            result.LowestCommonAncestorName = commonName;
+            result.RelationshipDescription = $"{result.Shape1.Shape.Name} và {result.Shape2.Shape.Name} là hai nhánh phân cấp khác nhau, cùng có tổ tiên chung gần nhất là \"{commonName}\". Cả hai hình cùng sở hữu các tính chất nền tảng của {commonName}.";
+        }
+
+        return result;
+    }
 }

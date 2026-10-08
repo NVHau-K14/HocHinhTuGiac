@@ -48,4 +48,49 @@ public class LearnerRepository : ILearnerRepository
         ";
         await session.RunAsync(query, new { clientId, displayName });
     }
+
+    public async Task<List<LeaderboardEntry>> GetLeaderboardAsync(int top = 10, string? currentClientId = null)
+    {
+        await using var session = _driverService.CreateSession();
+        var query = @"
+            MATCH (l:Learner)-[:MADE_ATTEMPT]->(a:QuizAttempt)
+            WITH l, count(a) AS totalAttempts, max(a.score) AS maxScore, max(a.submittedAt) AS lastActive
+            RETURN l.clientId AS clientId,
+                   l.displayName AS displayName,
+                   maxScore,
+                   totalAttempts,
+                   toString(lastActive) AS lastActiveStr
+            ORDER BY maxScore DESC, totalAttempts ASC, lastActive DESC
+            LIMIT $top
+        ";
+
+        var cursor = await session.RunAsync(query, new { top });
+        var list = new List<LeaderboardEntry>();
+        int rank = 1;
+
+        while (await cursor.FetchAsync())
+        {
+            var record = cursor.Current;
+            var cId = record["clientId"].As<string>();
+            var lastActiveStr = record["lastActiveStr"].As<string?>();
+            DateTime? lastActive = null;
+            if (!string.IsNullOrEmpty(lastActiveStr) && DateTime.TryParse(lastActiveStr, out var parsedDt))
+            {
+                lastActive = parsedDt;
+            }
+
+            list.Add(new LeaderboardEntry
+            {
+                Rank = rank++,
+                ClientId = cId,
+                DisplayName = record["displayName"].As<string?>() ?? "Học sinh",
+                MaxScore = (int)record["maxScore"].As<long>(),
+                TotalAttempts = (int)record["totalAttempts"].As<long>(),
+                LastActive = lastActive,
+                IsCurrentLearner = !string.IsNullOrEmpty(currentClientId) && cId == currentClientId
+            });
+        }
+
+        return list;
+    }
 }

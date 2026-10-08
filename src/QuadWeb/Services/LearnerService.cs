@@ -26,4 +26,9 @@ public class LearnerService : ILearnerService
         }
         return _learnerRepository.UpdateDisplayNameAsync(clientId, cleanName);
     }
+
+    public Task<List<LeaderboardEntry>> GetLeaderboardAsync(int top = 10, string? currentClientId = null)
+    {
+        return _learnerRepository.GetLeaderboardAsync(top, currentClientId);
+    }
 }

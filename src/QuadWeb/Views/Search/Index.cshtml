@@ -1,0 +1,133 @@
+@model QuadWeb.Models.SearchViewModel
+@{
+    ViewData["Title"] = "Tìm kiếm kiến thức Tứ Giác";
+}
+
+<div class="mb-4">
+    <div class="d-flex align-items-center gap-2 mb-2">
+        <a href="/" class="text-decoration-none small" style="color: var(--color-pencil);">&larr; Về trang chủ</a>
+        <span class="text-muted">|</span>
+        <span class="small text-muted">Tra cứu hình học</span>
+    </div>
+    <h1 style="color: var(--color-ink); margin-bottom: 8px;">
+        <span style="color: var(--color-margin);">✎</span> Tra cứu & Tìm kiếm kiến thức Tứ giác
+    </h1>
+    <p style="color: var(--color-pencil); font-size: 1.05rem;">
+        Tìm kiếm nhanh định nghĩa, tính chất, định lý, dấu hiệu nhận biết hoặc công thức tính toán trên 8 hình tứ giác.
+    </p>
+</div>
+
+<!-- Khung nhập từ khóa tìm kiếm -->
+<div class="p-3 mb-4" style="background-color: #FFFFFF; border: 1.5px solid var(--color-ink); border-radius: 8px; box-shadow: 3px 3px 0px rgba(31, 58, 147, 0.15);">
+    <form method="get" action="/search" class="d-flex flex-wrap gap-2">
+        <input type="text" name="q" value="@Model.Query" placeholder="Nhập từ khóa (ví dụ: đường chéo, vuông góc, song song, chu vi...)" 
+               class="form-control" style="flex-grow: 1; font-family: 'Patrick Hand', cursive; font-size: 1.3rem; border: 1.5px solid var(--color-ink); background-color: var(--color-paper);" />
+        <button type="submit" class="btn-pen" style="font-size: 1.2rem; padding: 6px 24px;">
+            Tìm kiếm 🔍
+        </button>
+    </form>
+    
+    <div class="mt-2 small" style="color: var(--color-pencil);">
+        Gợi ý từ khóa: 
+        <a href="/search?q=đường+chéo" class="text-decoration-underline text-secondary me-2">đường chéo</a>
+        <a href="/search?q=vuông+góc" class="text-decoration-underline text-secondary me-2">vuông góc</a>
+        <a href="/search?q=song+song" class="text-decoration-underline text-secondary me-2">song song</a>
+        <a href="/search?q=diện+tích" class="text-decoration-underline text-secondary me-2">diện tích</a>
+        <a href="/search?q=bằng+nhau" class="text-decoration-underline text-secondary me-2">bằng nhau</a>
+        <a href="/search?q=hình+thoi" class="text-decoration-underline text-secondary">hình thoi</a>
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.Query))
+{
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 style="font-family: 'Patrick Hand', cursive; color: var(--color-ink); font-size: 1.5rem; margin-bottom: 0;">
+            Kết quả tra cứu cho: "<span style="color: var(--color-margin);">@Model.Query</span>"
+        </h3>
+        <span class="badge" style="background-color: var(--color-ink); color: #fff; font-size: 0.95rem;">
+            Tìm thấy @Model.TotalCount kết quả
+        </span>
+    </div>
+
+    @if (!Model.Results.Any())
+    {
+        <div class="p-4 text-center" style="background-color: var(--color-paper); border: 1.5px dashed var(--color-grid); border-radius: 6px;">
+            <div style="font-size: 3rem; color: var(--color-pencil);">🔍</div>
+            <h4 style="font-family: 'Patrick Hand', cursive; color: var(--color-ink); margin-top: 8px;">
+                Không tìm thấy kết quả nào phù hợp
+            </h4>
+            <p class="text-muted small mb-3">
+                Bạn thử tìm kiếm với các từ khóa ngắn gọn hơn như "đường chéo", "song song", "bằng nhau", "góc vuông".
+            </p>
+            <a href="/shapes" class="btn-pen-outline">Khám phá toàn bộ 8 hình tứ giác</a>
+        </div>
+    }
+    else
+    {
+        <div class="search-results-list d-flex flex-column gap-3">
+            @foreach (var item in Model.Results)
+            {
+                var badgeClass = item.Category switch
+                {
+                    "Hình học" => "badge-theory",
+                    "Định nghĩa" => "badge-recog",
+                    "Tính chất" => "badge-calc",
+                    "Dấu hiệu nhận biết" => "badge-theory",
+                    "Định lý" => "badge-recog",
+                    "Công thức" => "badge-calc",
+                    _ => "badge-theory"
+                };
+
+                <div class="p-3" style="background-color: #FFFFFF; border: 1.5px solid var(--color-grid); border-radius: 6px; box-shadow: 2px 2px 0px rgba(0,0,0,0.03);">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="question-badge @badgeClass">@item.Category</span>
+                        <a href="/shapes/@item.ShapeSlug" class="small text-decoration-none fw-bold" style="color: var(--color-ink);">
+                            @item.ShapeName &rarr;
+                        </a>
+                    </div>
+                    <h4 style="font-family: 'Patrick Hand', cursive; font-size: 1.35rem; color: var(--color-ink); margin-bottom: 4px;">
+                        @item.Title
+                    </h4>
+                    @if (item.Snippet != item.Title)
+                    {
+                        <p class="mb-2" style="font-size: 0.98rem; color: var(--color-text); line-height: 1.5;">
+                            @item.Snippet
+                        </p>
+                    }
+                    <div class="text-end">
+                        <a href="/shapes/@item.ShapeSlug" class="btn-pen-outline" style="font-size: 0.9rem; padding: 2px 10px;">
+                            Xem chi tiết lý thuyết &rarr;
+                        </a>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+}
+else
+{
+    <!-- Gợi ý khám phá khi chưa nhập từ khóa -->
+    <div class="row g-3 mt-2">
+        <div class="col-md-4">
+            <div class="p-3 h-100" style="background-color: var(--color-paper); border: 1.5px solid var(--color-grid); border-radius: 6px;">
+                <h4 style="font-family: 'Patrick Hand', cursive; color: var(--color-ink);">📐 Nhóm tính chất đường chéo</h4>
+                <p class="small text-muted mb-2">Tìm các hình có đường chéo vuông góc, bằng nhau, hoặc cắt nhau tại trung điểm.</p>
+                <a href="/search?q=đường+chéo" class="text-decoration-underline" style="color: var(--color-ink); font-weight: 600;">Tìm "đường chéo" &rarr;</a>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="p-3 h-100" style="background-color: var(--color-paper); border: 1.5px solid var(--color-grid); border-radius: 6px;">
+                <h4 style="font-family: 'Patrick Hand', cursive; color: var(--color-ink);">📏 Nhóm công thức & diện tích</h4>
+                <p class="small text-muted mb-2">Tra cứu công thức tính chu vi và diện tích cho tất cả các hình tứ giác.</p>
+                <a href="/search?q=diện+tích" class="text-decoration-underline" style="color: var(--color-ink); font-weight: 600;">Tìm "diện tích" &rarr;</a>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="p-3 h-100" style="background-color: var(--color-paper); border: 1.5px solid var(--color-grid); border-radius: 6px;">
+                <h4 style="font-family: 'Patrick Hand', cursive; color: var(--color-ink);">🔍 Dấu hiệu nhận biết</h4>
+                <p class="small text-muted mb-2">Tra cứu cách chứng minh từ hình bình hành, hình thang thành hình chữ nhật, hình thoi, hình vuông.</p>
+                <a href="/search?q=dấu+hiệu" class="text-decoration-underline" style="color: var(--color-ink); font-weight: 600;">Tìm "dấu hiệu" &rarr;</a>
+            </div>
+        </div>
+    </div>
+}

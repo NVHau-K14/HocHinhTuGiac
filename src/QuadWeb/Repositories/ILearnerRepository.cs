@@ -6,4 +6,5 @@ public interface ILearnerRepository
 {
     Task<Learner> GetOrCreateLearnerAsync(string clientId, string defaultDisplayName = "Người học");
     Task UpdateDisplayNameAsync(string clientId, string displayName);
+    Task<List<LeaderboardEntry>> GetLeaderboardAsync(int top = 10, string? currentClientId = null);
 }

@@ -1,0 +1,158 @@
+@model List<QuadWeb.Models.LeaderboardEntry>
+@{
+    ViewData["Title"] = "Bảng điểm lớp";
+    var currentName = ViewBag.DisplayName as string ?? "Người học";
+    var currentClientId = ViewBag.ClientId as string ?? string.Empty;
+}
+
+<div class="mb-4">
+    <div class="d-flex align-items-center gap-2 mb-2">
+        <a href="/" class="text-decoration-none small" style="color: var(--color-pencil);">&larr; Về trang chủ</a>
+        <span class="text-muted">|</span>
+        <span class="small text-muted">Bảng thành tích</span>
+    </div>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div>
+            <h1 style="color: var(--color-ink); margin-bottom: 4px;">
+                <span style="color: var(--color-margin);">✎</span> Sổ ghi điểm lớp: Top 10 Học sinh xuất sắc
+            </h1>
+            <p style="color: var(--color-pencil); margin-bottom: 0;">
+                Bảng vàng thành tích ghi nhận điểm số bài kiểm tra trắc nghiệm 10 câu hình tứ giác.
+            </p>
+        </div>
+        <div>
+            <a href="/quiz" class="btn-pen" style="font-size: 1.1rem;">
+                Làm bài Quiz để ghi danh &rarr;
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Khung Đổi tên người học -->
+<div class="p-3 mb-4" style="background-color: #FFFFFF; border: 1.5px dashed var(--color-ink); border-radius: 6px;">
+    <form id="form-update-name" class="d-flex flex-wrap align-items-center gap-3" method="post" action="/leaderboard/update-name">
+        @Html.AntiForgeryToken()
+        <div class="d-flex align-items-center gap-2">
+            <span style="font-family: 'Patrick Hand', cursive; font-size: 1.3rem; color: var(--color-ink);">
+                Họ và tên của bạn:
+            </span>
+            <input type="text" name="displayName" id="input-display-name" class="form-control" 
+                   value="@currentName" maxlength="30" required
+                   style="max-width: 260px; font-family: 'Patrick Hand', cursive; font-size: 1.25rem; border: 1.5px solid var(--color-ink); background-color: var(--color-paper);" />
+        </div>
+        <button type="submit" class="btn-pen-outline" style="font-size: 1.1rem; padding: 4px 16px;">
+            Lưu tên ✎
+        </button>
+        <span id="name-update-msg" class="small text-success" style="display: none;">Đã cập nhật tên thành công!</span>
+    </form>
+</div>
+
+<!-- Bảng điểm phong cách tập học sinh -->
+<div class="table-responsive" style="background-color: #FFFFFF; border: 1.5px solid var(--color-ink); border-radius: 6px; box-shadow: 3px 3px 0px rgba(31, 58, 147, 0.15);">
+    <table class="table mb-0" style="font-size: 1.05rem;">
+        <thead style="background-color: var(--color-paper); border-bottom: 2px solid var(--color-ink);">
+            <tr style="font-family: 'Patrick Hand', cursive; font-size: 1.25rem; color: var(--color-ink);">
+                <th style="width: 80px; text-align: center;">Hạng</th>
+                <th>Họ và tên học sinh</th>
+                <th style="text-align: center; width: 150px;">Điểm cao nhất</th>
+                <th style="text-align: center; width: 140px;">Số bài đã làm</th>
+                <th style="width: 180px;">Thời gian gần nhất</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model == null || !Model.Any())
+            {
+                <tr>
+                    <td colspan="5" class="text-center py-4 text-muted">
+                        Chưa có học sinh nào hoàn thành bài Quiz. <a href="/quiz" class="text-decoration-underline" style="color: var(--color-ink);">Hãy là người đầu tiên làm bài!</a>
+                    </td>
+                </tr>
+            }
+            else
+            {
+                @foreach (var entry in Model)
+                {
+                    var isCurrent = entry.IsCurrentLearner;
+                    var rowStyle = isCurrent ? "background-color: var(--color-highlight); font-weight: 600;" : "";
+                    var rankMedal = entry.Rank switch
+                    {
+                        1 => "🥇 1",
+                        2 => "🥈 2",
+                        3 => "🥉 3",
+                        _ => $"{entry.Rank}"
+                    };
+
+                    <tr style="@rowStyle border-bottom: 1px dashed var(--color-grid);">
+                        <td style="text-align: center; font-family: 'Patrick Hand', cursive; font-size: 1.3rem; color: var(--color-ink);">
+                            @rankMedal
+                        </td>
+                        <td>
+                            <span style="font-family: 'Patrick Hand', cursive; font-size: 1.25rem; color: var(--color-ink);">
+                                @Html.Encode(entry.DisplayName)
+                            </span>
+                            @if (isCurrent)
+                            {
+                                <span class="badge ms-2" style="background-color: var(--color-ink); color: #fff; font-size: 0.75rem;">
+                                    Bạn
+                                </span>
+                            }
+                        </td>
+                        <td style="text-align: center;">
+                            <strong style="color: var(--color-margin); font-family: 'Patrick Hand', cursive; font-size: 1.35rem;">
+                                @entry.MaxScore / 100
+                            </strong>
+                        </td>
+                        <td style="text-align: center; color: var(--color-pencil);">
+                            @entry.TotalAttempts bài
+                        </td>
+                        <td style="font-size: 0.95rem; color: var(--color-pencil);">
+                            @(entry.LastActive?.ToString("HH:mm - dd/MM/yyyy") ?? "--")
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>
+
+<div class="mt-4 p-3" style="background-color: var(--color-paper); border-left: 3px solid var(--color-margin); border-radius: 4px;">
+    <strong style="color: var(--color-margin);">Quy tắc tính điểm sổ vàng:</strong>
+    <p class="mb-0 small text-muted">
+        Bảng xếp hạng ưu tiên học sinh có <strong>Điểm thi cao nhất</strong> (tối đa 100 điểm). Trường hợp bằng điểm, người đạt điểm số đó với số lần làm ít hơn hoặc sớm hơn sẽ được xếp trước.
+    </p>
+</div>
+
+@section Scripts {
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.getElementById('form-update-name');
+        const input = document.getElementById('input-display-name');
+        const msg = document.getElementById('name-update-msg');
+
+        form.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const newName = input.value.trim();
+            if (!newName) return;
+
+            try {
+                const resp = await fetch('/api/learner/name', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ displayName: newName })
+                });
+
+                if (resp.ok) {
+                    msg.style.display = 'inline';
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 500);
+                } else {
+                    alert('Không thể cập nhật tên. Vui lòng thử lại!');
+                }
+            } catch (err) {
+                alert('Lỗi: ' + err.message);
+            }
+        });
+    });
+</script>
+}
