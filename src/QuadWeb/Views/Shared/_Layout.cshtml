@@ -74,6 +74,9 @@
         </div>
     </footer>
 
+    <!-- Graph Modal (vis-network) -->
+    @await Html.PartialAsync("_GraphModal")
+
     <!-- Scripts -->
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
@@ -84,6 +87,7 @@
             onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
     
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/graph.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

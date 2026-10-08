@@ -245,4 +245,74 @@ public class ShapeRepository : IShapeRepository
 
         return model;
     }
+
+    public async Task<GraphDataDto> GetGraphDataAsync()
+    {
+        var result = new GraphDataDto();
+        await using var session = _driverService.CreateSession();
+
+        // 1. Lấy tất cả nodes Shape
+        var nodesQuery = @"
+            MATCH (s:Shape)
+            RETURN s.slug AS slug, s.name AS name, coalesce(s.family, 'goc') AS family
+            ORDER BY s.sortOrder
+        ";
+        var nodesCursor = await session.RunAsync(nodesQuery);
+        while (await nodesCursor.FetchAsync())
+        {
+            var slug = nodesCursor.Current["slug"].As<string>();
+            var name = nodesCursor.Current["name"].As<string>();
+            var family = nodesCursor.Current["family"].As<string>();
+
+            int level = slug switch
+            {
+                "tu-giac" => 0,
+                "hinh-thang" => 1,
+                "hinh-dieu" => 1,
+                "hinh-thang-can" => 2,
+                "hinh-binh-hanh" => 2,
+                "hinh-chu-nhat" => 3,
+                "hinh-thoi" => 3,
+                "hinh-vuong" => 4,
+                _ => 2
+            };
+
+            string color = family switch
+            {
+                "thang" => "#E6DDF5",
+                "binh-hanh" => "#D8F0E4",
+                "dieu" => "#FBE0E8",
+                _ => "#FAFCFD"
+            };
+
+            result.Nodes.Add(new GraphNodeDto
+            {
+                Id = slug,
+                Slug = slug,
+                Label = name,
+                Family = family,
+                Level = level,
+                Color = color
+            });
+        }
+
+        // 2. Lấy 10 cạnh IS_A
+        var edgesQuery = @"
+            MATCH (child:Shape)-[:IS_A]->(parent:Shape)
+            RETURN child.slug AS from, parent.slug AS to
+            ORDER BY from, to
+        ";
+        var edgesCursor = await session.RunAsync(edgesQuery);
+        while (await edgesCursor.FetchAsync())
+        {
+            result.Edges.Add(new GraphEdgeDto
+            {
+                From = edgesCursor.Current["from"].As<string>(),
+                To = edgesCursor.Current["to"].As<string>(),
+                Label = "IS_A"
+            });
+        }
+
+        return result;
+    }
 }

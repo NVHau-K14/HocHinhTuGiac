@@ -31,4 +31,9 @@ public class ShapeService : IShapeService
     {
         return _shapeRepository.GetShapeDetailAsync(slug);
     }
+
+    public Task<GraphDataDto> GetGraphDataAsync()
+    {
+        return _shapeRepository.GetGraphDataAsync();
+    }
 }

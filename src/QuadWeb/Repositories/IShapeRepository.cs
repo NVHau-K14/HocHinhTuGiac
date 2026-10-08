@@ -8,4 +8,5 @@ public interface IShapeRepository
     Task<List<Shape>> GetAllShapesAsync();
     Task<Shape?> GetShapeBySlugAsync(string slug);
     Task<ShapeDetailViewModel?> GetShapeDetailAsync(string slug);
+    Task<GraphDataDto> GetGraphDataAsync();
 }
