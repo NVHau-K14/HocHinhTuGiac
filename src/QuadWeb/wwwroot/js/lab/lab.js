@@ -103,8 +103,7 @@
             const tabMap = {
                 'measurements': 'tabBtnMeasurements',
                 'formulas': 'tabBtnFormulas',
-                'classify': 'tabBtnClassify',
-                'challenges': 'tabBtnChallenges'
+                'classify': 'tabBtnClassify'
             };
             const btnId = tabMap[tabParam.toLowerCase()];
             if (btnId) {
@@ -796,7 +795,6 @@
         updateMeasurementsPanel();
         updateFormulasPanel();
         updateClassifyPanel();
-        updateChallengesPanel();
     }
 
     /**
@@ -1290,237 +1288,7 @@
         });
     }
 
-    // Danh sách các thử thách hình học
-    const CHALLENGES = [
-        {
-            id: 'ch_hbh_thoi',
-            type: 1,
-            title: 'Biến Hình bình hành thành Hình thoi',
-            parentSlug: 'hinh-binh-hanh',
-            targetSlug: 'hinh-thoi',
-            desc: 'Kéo các đỉnh của Hình bình hành sao cho tứ giác trở thành Hình thoi.',
-            hint: 'Hình thoi có bốn cạnh bằng nhau hoặc hai đường chéo vuông góc với nhau (AC ⊥ BD).'
-        },
-        {
-            id: 'ch_hcn_vuong',
-            type: 1,
-            title: 'Biến Hình chữ nhật thành Hình vuông',
-            parentSlug: 'hinh-chu-nhat',
-            targetSlug: 'hinh-vuong',
-            desc: 'Kéo các đỉnh của Hình chữ nhật sao cho tứ giác trở thành Hình vuông.',
-            hint: 'Hình vuông là hình chữ nhật có hai cạnh kề bằng nhau (AB = BC) hoặc hai đường chéo vuông góc.'
-        },
-        {
-            id: 'ch_ht_hbh',
-            type: 1,
-            title: 'Biến Hình thang thành Hình bình hành',
-            parentSlug: 'hinh-thang',
-            targetSlug: 'hinh-binh-hanh',
-            desc: 'Kéo các đỉnh của Hình thang sao cho tứ giác trở thành Hình bình hành.',
-            hint: 'Hình bình hành có hai cặp cạnh đối song song (AB ∥ CD và AD ∥ BC).'
-        },
-        {
-            id: 'ch_ht_htc',
-            type: 1,
-            title: 'Biến Hình thang thành Hình thang cân',
-            parentSlug: 'hinh-thang',
-            targetSlug: 'hinh-thang-can',
-            desc: 'Kéo các đỉnh của Hình thang sao cho tứ giác trở thành Hình thang cân.',
-            hint: 'Hình thang cân có hai góc kề một đáy bằng nhau hoặc hai đường chéo bằng nhau (AC = BD).'
-        },
-        {
-            id: 'ch_thoi_vuong',
-            type: 1,
-            title: 'Biến Hình thoi thành Hình vuông',
-            parentSlug: 'hinh-thoi',
-            targetSlug: 'hinh-vuong',
-            desc: 'Kéo các đỉnh của Hình thoi sao cho tứ giác trở thành Hình vuông.',
-            hint: 'Hình vuông là hình thoi có một góc vuông (90°) hoặc hai đường chéo bằng nhau.'
-        },
-        {
-            id: 'ch_hcn_ps',
-            type: 2,
-            title: 'Hình chữ nhật: Chu vi P = 20 cm, Diện tích S = 24 cm²',
-            parentSlug: 'hinh-chu-nhat',
-            desc: 'Điều chỉnh kích thước hình chữ nhật để đạt đúng Chu vi P = 20 cm và Diện tích S = 24 cm².',
-            targetP: 20,
-            targetS: 24,
-            hint: 'Tìm hai cạnh a, b sao cho 2(a + b) = 20 và a · b = 24 (ví dụ a = 6 cm, b = 4 cm hoặc ngược lại).'
-        },
-        {
-            id: 'ch_vuong_s',
-            type: 2,
-            title: 'Hình vuông: Diện tích S = 25 cm²',
-            parentSlug: 'hinh-vuong',
-            desc: 'Điều chỉnh cạnh hình vuông để đạt Diện tích S = 25 cm².',
-            targetS: 25,
-            hint: 'Diện tích hình vuông là S = a². Vì vậy độ dài cạnh cần đạt là a = 5 cm.'
-        },
-        {
-            id: 'ch_thoi_s',
-            type: 2,
-            title: 'Hình thoi: Diện tích S = 20 cm²',
-            parentSlug: 'hinh-thoi',
-            desc: 'Điều chỉnh hình thoi để đạt Diện tích S = 20 cm².',
-            targetS: 20,
-            hint: 'Diện tích hình thoi tính theo hai đường chéo S = (d₁ · d₂)/2. Có thể chọn d₁ = 8 cm, d₂ = 5 cm.'
-        },
-        {
-            id: 'ch_ht_sh',
-            type: 2,
-            title: 'Hình thang: Diện tích S = 18 cm², Chiều cao h = 3 cm',
-            parentSlug: 'hinh-thang',
-            desc: 'Điều chỉnh hai đáy và chiều cao hình thang để đạt S = 18 cm² với h = 3 cm.',
-            targetS: 18,
-            targetH: 3,
-            hint: 'Diện tích S = (a + b)·h/2. Với h = 3 và S = 18, tổng hai đáy cần là a + b = 12 cm (ví dụ a = 8 cm, b = 4 cm).'
-        }
-    ];
 
-    let currentChallengeIndex = 0;
-    let challengeHintVisible = false;
-
-    /**
-     * Cập nhật panel tab "Thử thách"
-     */
-    function updateChallengesPanel() {
-        const container = document.getElementById('labChallengesContent');
-        if (!container || !Geometry || !Classify) return;
-
-        const ch = CHALLENGES[currentChallengeIndex];
-        const [A, B, C, D] = state.vertices;
-        const m = Geometry.computeMeasurements(A, B, C, D);
-        const curSpecific = state.currentClassification?.mostSpecific || 'tu-giac';
-        const matchingSlugs = state.currentClassification?.matchingSlugs || [];
-
-        let passed = false;
-        let reason = '';
-
-        if (ch.type === 1) {
-            if (matchingSlugs.includes(ch.targetSlug)) {
-                passed = true;
-                reason = `Đúng ✓ Hình hiện tại đã trở thành ${Classify.SHAPE_NAMES[ch.targetSlug]}. Chúc mừng bạn đã hoàn thành thử thách!`;
-            } else {
-                passed = false;
-                reason = `Chưa đúng ✗ Hình hiện tại đang là ${Classify.SHAPE_NAMES[curSpecific] || 'Tứ giác'}. Mục tiêu cần đạt: ${Classify.SHAPE_NAMES[ch.targetSlug]}.`;
-            }
-        } else {
-            const tol = 0.02;
-            let checkP = true;
-            let checkS = true;
-            let checkH = true;
-
-            if (ch.targetP !== undefined) {
-                checkP = Math.abs(m.perimeter - ch.targetP) <= tol;
-            }
-            if (ch.targetS !== undefined) {
-                checkS = Math.abs(m.area - ch.targetS) <= tol;
-            }
-            if (ch.targetH !== undefined) {
-                const vAB = Geometry.vector(A, B);
-                const vCD = Geometry.vector(C, D);
-                let actualH = 0;
-                if (Geometry.areParallel(vAB, vCD)) {
-                    actualH = Geometry.pointToLineDistance(C, A, B);
-                }
-                checkH = Math.abs(actualH - ch.targetH) <= tol;
-            }
-
-            if (checkP && checkS && checkH) {
-                passed = true;
-                reason = `Đúng ✓ Đã đạt chính xác các kích thước mục tiêu! (P = ${Geometry.formatNumberVi(m.perimeter)} cm, S = ${Geometry.formatNumberVi(m.area)} cm²)`;
-            } else {
-                passed = false;
-                const parts = [];
-                if (ch.targetP !== undefined) {
-                    parts.push(`Chu vi hiện là ${Geometry.formatNumberVi(m.perimeter)} cm (cần ${ch.targetP} cm)`);
-                }
-                if (ch.targetS !== undefined) {
-                    parts.push(`Diện tích hiện là ${Geometry.formatNumberVi(m.area)} cm² (cần ${ch.targetS} cm²)`);
-                }
-                reason = `Chưa đúng ✗ ${parts.join('; ')}.`;
-            }
-        }
-
-        container.innerHTML = `
-            <div class="lab-challenge-container">
-                <div class="lab-challenge-card">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <span class="lab-challenge-badge ${ch.type === 2 ? 'type2' : ''}">
-                            ${ch.type === 1 ? '🎯 Biến hình học' : '📏 Kích thước P & S'} (Thử thách ${currentChallengeIndex + 1}/${CHALLENGES.length})
-                        </span>
-                        <span class="small text-muted">Chỉ lưu trong phiên</span>
-                    </div>
-
-                    <h4 class="lab-challenge-title">${ch.title}</h4>
-                    <p class="lab-challenge-desc">${ch.desc}</p>
-
-                    <div class="lab-challenge-target-box">
-                        <strong>Mục tiêu:</strong> ${ch.type === 1 ? `Biến ${Classify.SHAPE_NAMES[ch.parentSlug]} thành <strong>${Classify.SHAPE_NAMES[ch.targetSlug]}</strong>` : `Đạt ${ch.targetP ? `P = ${ch.targetP} cm, ` : ''}S = ${ch.targetS} cm²`}
-                    </div>
-
-                    <div class="lab-challenge-feedback ${passed ? 'pass' : 'pending'}">
-                        <span>${passed ? '🎉' : '⏳'}</span>
-                        <div>${reason}</div>
-                    </div>
-
-                    ${challengeHintVisible ? `
-                        <div class="lab-hint-box">
-                            <strong>💡 Gợi ý:</strong> ${ch.hint}
-                        </div>
-                    ` : ''}
-
-                    <div class="lab-challenge-actions">
-                        <button type="button" class="btn-pen" id="labBtnStartChallenge">
-                            🚀 Bắt đầu thử thách này
-                        </button>
-                        <button type="button" class="btn-pen-outline" id="labBtnToggleHint">
-                            ${challengeHintVisible ? 'Ẩn gợi ý' : '💡 Gợi ý'}
-                        </button>
-                        <button type="button" class="btn-pen-outline" id="labBtnResetChallenge">
-                            ↺ Làm lại
-                        </button>
-                        <button type="button" class="btn-pen-outline" id="labBtnNextChallenge">
-                            🎲 Thử thách khác
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        const btnStart = document.getElementById('labBtnStartChallenge');
-        if (btnStart) {
-            btnStart.addEventListener('click', () => {
-                applyPreset(ch.parentSlug);
-                setAlertMessage(`Đã khởi tạo ${Classify.SHAPE_NAMES[ch.parentSlug]} để thực hiện thử thách "${ch.title}".`);
-            });
-        }
-
-        const btnHint = document.getElementById('labBtnToggleHint');
-        if (btnHint) {
-            btnHint.addEventListener('click', () => {
-                challengeHintVisible = !challengeHintVisible;
-                updateChallengesPanel();
-            });
-        }
-
-        const btnReset = document.getElementById('labBtnResetChallenge');
-        if (btnReset) {
-            btnReset.addEventListener('click', () => {
-                applyPreset(ch.parentSlug);
-            });
-        }
-
-        const btnNext = document.getElementById('labBtnNextChallenge');
-        if (btnNext) {
-            btnNext.addEventListener('click', () => {
-                currentChallengeIndex = (currentChallengeIndex + 1) % CHALLENGES.length;
-                challengeHintVisible = false;
-                applyPreset(CHALLENGES[currentChallengeIndex].parentSlug);
-                updateChallengesPanel();
-            });
-        }
-    }
 
     /**
      * Tải hình vẽ SVG
@@ -1735,10 +1503,9 @@
                 const activePane = document.getElementById(targetTab);
                 if (activePane) activePane.classList.add('active');
 
-                // Render lại công thức/nhận dạng/thử thách khi mở tab
+                // Render lại công thức/nhận dạng khi mở tab
                 if (targetTab === 'tabFormulas') updateFormulasPanel();
                 if (targetTab === 'tabClassify') updateClassifyPanel();
-                if (targetTab === 'tabChallenges') updateChallengesPanel();
             });
         });
     }
