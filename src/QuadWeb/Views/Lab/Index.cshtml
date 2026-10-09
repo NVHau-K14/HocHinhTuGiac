@@ -13,17 +13,6 @@
                 Kéo thả đỉnh tứ giác, khám phá điều kiện biến hình và đối chiếu công thức trực tiếp trên trang vở
             </p>
         </div>
-        <div class="d-flex align-items-center gap-2 flex-wrap">
-            <button type="button" class="btn-pen-outline" id="labBtnShare" title="Sao chép liên kết chia sẻ hình hiện tại">
-                🔗 Sao chép liên kết
-            </button>
-            <button type="button" class="btn-pen-outline" id="labBtnDownloadSvg" title="Tải hình vẽ dưới dạng vector SVG">
-                📥 Tải SVG
-            </button>
-            <button type="button" class="btn-pen-outline" id="labBtnDownloadPng" title="Tải hình vẽ dưới dạng ảnh PNG">
-                🖼️ Tải PNG
-            </button>
-        </div>
     </div>
 
     <!-- Dải nút chọn hình mẫu (Lấy động từ /api/lab/meta) -->
@@ -54,19 +43,11 @@
                 </div>
             </div>
 
-            <!-- Bắt lưới & Bước -->
+            <!-- Bắt lưới -->
             <div class="d-flex align-items-center gap-2">
                 <label class="lab-control-item" title="Bật hoặc tắt chức năng hút điểm vào mắt lưới">
                     <input type="checkbox" id="labSnapCheck" checked />
-                    <span>Bắt lưới</span>
-                </label>
-                <label class="lab-control-item">
-                    <span>Bước:</span>
-                    <select id="labSnapStepSelect" aria-label="Bước bắt lưới">
-                        <option value="1">1 ô (1 cm)</option>
-                        <option value="0.5">0.5 ô (0.5 cm)</option>
-                        <option value="0">Tự do (tắt hút)</option>
-                    </select>
+                    <span>Bắt lưới (1 cm)</span>
                 </label>
             </div>
         </div>

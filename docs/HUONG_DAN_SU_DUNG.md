@@ -155,9 +155,10 @@ Tab **"Xưởng vẽ"** trên thanh điều hướng là phòng thí nghiệm h�
 ![Giao diện Xưởng vẽ trên Máy tính](screenshots/lab_stage5_desktop.png)
 
 1. **Bảng vẽ SVG tương tác & Bắt lưới (Snap-to-Grid):**
+   - **Tự động vẽ hình trực tiếp:** Khi chọn bất kỳ hình mẫu nào (Tứ giác, Hình thang, Hình bình hành, Hình chữ nhật, Hình thoi, Hình vuông, Hình diều...), web tự động dựng ngay hình vẽ tương ứng ở trung tâm bảng vẽ với đầy đủ cạnh, đỉnh, góc, số đo và ký hiệu.
    - **Lưới ô li 24px:** Tương ứng 1 ô = 1 cm trong hệ tọa độ toán học.
    - **Tương tác đa dạng:** Kéo thả 4 đỉnh A, B, C, D bằng chuột, cảm ứng chạm trên điện thoại hoặc bàn phím (Tab để chọn đỉnh, phím mũi tên để di chuyển, Shift + mũi tên để nhảy 5 bước).
-   - **Bắt lưới thông minh:** Tùy chọn bước bắt lưới `1 ô (1 cm)`, `0.5 ô (0.5 cm)` hoặc `Tự do` (tắt hút).
+   - **Bắt lưới thông minh:** Tùy chọn bật/tắt hút điểm chuẩn xác vào các mắt lưới 1 cm.
    - **Bảo toàn tính lồi:** Hệ thống tự động từ chối các vị trí làm tứ giác bị lõm hoặc tự cắt, rung nhẹ viền đỏ và hướng dẫn bằng tiếng Việt.
 
 2. **Hai chế độ làm việc linh hoạt:**
@@ -175,10 +176,8 @@ Tab **"Xưởng vẽ"** trên thanh điều hướng là phòng thí nghiệm h�
      - *Dạng 1 (Biến hình học):* Thử thách biến đổi hình cha thành hình con (ví dụ: Biến Hình bình hành thành Hình thoi). Kèm nút "💡 Gợi ý" và hệ thống chấm điểm tự động.
      - *Dạng 2 (Đạt kích thước P, S):* Thử thách điều chỉnh hình đạt đúng chu vi và diện tích cho trước với dung sai $\pm 0.02\text{ cm}$.
 
-4. **Lớp hiển thị & Xuất tài liệu học tập:**
+4. **Lớp hiển thị trực quan:**
    - Tùy chọn bật/tắt linh hoạt các lớp: **Cạnh**, **Góc**, **Đường chéo**, **Ký hiệu tự động** (góc vuông, dấu song song `>`, `>>`, bằng nhau) và **Trục đối xứng** (nét đứt tím thanh lịch).
-   - Nút **"🔗 Sao chép liên kết"**: Lưu toàn bộ tọa độ và trạng thái lên thanh địa chỉ URL để chia sẻ bài học.
-   - Nút **"📥 Tải SVG"** và **"🖼️ Tải PNG"**: Xuất file ảnh chất lượng cao để in ấn hoặc nộp bài tập về nhà.
 
 ![Giao diện Xưởng vẽ trên Di động 360px](screenshots/lab_stage5_mobile.png)
 

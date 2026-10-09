@@ -201,14 +201,14 @@
 
         const alertMsg = document.getElementById('labAlertMessage');
         if (alertMsg) {
-            alertMsg.textContent = `Đã chọn hình mẫu: ${p.name}. Có thể kéo tay nắm hoặc nhập số để thay đổi.`;
+            alertMsg.textContent = `Đã vẽ hình mẫu: ${p.name}. Kéo các đỉnh hoặc thay đổi số đo để quan sát.`;
         }
     }
 
     function mathToSvg(x, y) {
         return {
-            x: state.pan.x + x * 24 * state.zoom,
-            y: state.pan.y - y * 24 * state.zoom
+            x: x * 24,
+            y: -y * 24
         };
     }
 
@@ -219,17 +219,11 @@
         };
     }
 
-    function applySnap(val, step) {
-        if (!state.snap || step === 0) {
+    function applySnap(val) {
+        if (!state.snap) {
             return Math.round(val * 100) / 100;
         }
-        if (step === 1) {
-            return Math.round(val);
-        }
-        if (step === 0.5) {
-            return Math.round(val * 2) / 2;
-        }
-        return val;
+        return Math.round(val);
     }
 
     /**
@@ -581,8 +575,8 @@
             const svgY = (e.clientY - rect.top) * (480 / rect.height);
 
             const rawMath = svgToMath(svgX, svgY);
-            const snappedX = applySnap(rawMath.x, state.snapStep);
-            const snappedY = applySnap(rawMath.y, state.snapStep);
+            const snappedX = applySnap(rawMath.x);
+            const snappedY = applySnap(rawMath.y);
 
             const clampedX = Math.max(-50, Math.min(50, snappedX));
             const clampedY = Math.max(-50, Math.min(50, snappedY));
@@ -686,7 +680,7 @@
                 if (!isHandle) return;
 
                 let dx = 0, dy = 0;
-                const step = state.snapStep === 0 ? 0.2 : (e.shiftKey ? state.snapStep * 5 : state.snapStep);
+                const step = !state.snap ? 0.2 : (e.shiftKey ? 5 : 1);
 
                 switch (e.key) {
                     case 'ArrowLeft': dx = -step; break;
@@ -1711,9 +1705,6 @@
         const snapCheck = document.getElementById('labSnapCheck');
         if (snapCheck) snapCheck.checked = state.snap;
 
-        const snapStepSelect = document.getElementById('labSnapStepSelect');
-        if (snapStepSelect) snapStepSelect.value = state.snapStep.toString();
-
         const modePresetBtn = document.getElementById('labModePresetBtn');
         const modeFreeBtn = document.getElementById('labModeFreeBtn');
         if (modePresetBtn && modeFreeBtn) {
@@ -1751,13 +1742,6 @@
                 syncUrl();
             });
         }
-        const snapStepSelect = document.getElementById('labSnapStepSelect');
-        if (snapStepSelect) {
-            snapStepSelect.addEventListener('change', (e) => {
-                state.snapStep = parseFloat(e.target.value);
-                syncUrl();
-            });
-        }
 
         ['Sides', 'Angles', 'Diagonals', 'Marks', 'AxesSym'].forEach(layer => {
             const chk = document.getElementById(`labLayer${layer}`);
@@ -1781,24 +1765,6 @@
                 applyPreset(state.activePreset);
             });
         }
-
-        const btnShare = document.getElementById('labBtnShare');
-        if (btnShare) {
-            btnShare.addEventListener('click', () => {
-                const url = window.location.href;
-                navigator.clipboard.writeText(url).then(() => {
-                    alert('✓ Đã sao chép liên kết bảng vẽ vào bộ nhớ tạm:\n' + url);
-                }).catch(() => {
-                    prompt('Sao chép liên kết này:', url);
-                });
-            });
-        }
-
-        const btnSvg = document.getElementById('labBtnDownloadSvg');
-        if (btnSvg) btnSvg.addEventListener('click', downloadSvg);
-
-        const btnPng = document.getElementById('labBtnDownloadPng');
-        if (btnPng) btnPng.addEventListener('click', downloadPng);
 
         const btnZoomIn = document.getElementById('labBtnZoomIn');
         const btnZoomOut = document.getElementById('labBtnZoomOut');
