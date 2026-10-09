@@ -202,17 +202,23 @@
 
                 <!-- Hình cha (tổng quát hơn) -->
                 <div class="mt-3">
-                    <strong class="small text-muted d-block mb-1">Hình tổng quát hơn (Hình cha):</strong>
+                    <strong class="small text-muted d-block mb-1">Hình tổng quát trực tiếp (Hình cha):</strong>
                     @if (Model.Parents.Any())
                     {
                         <ul class="list-unstyled mb-3" style="padding-left: 0;">
                             @foreach (var parent in Model.Parents)
                             {
-                                <li style="margin-bottom: 6px;">
+                                <li style="margin-bottom: 8px;">
                                     <span style="color: var(--color-margin); font-weight: bold;">&uarr;</span>
                                     <a href="/shape/@parent.Slug" style="color: var(--color-ink); font-weight: 600; text-decoration: underline;">
                                         @parent.Name
                                     </a>
+                                    @if (!string.IsNullOrEmpty(parent.Condition))
+                                    {
+                                        <div class="small mt-1 ps-3" style="color: var(--color-pencil);">
+                                            Để là @Model.Shape.Name cần thêm: <mark class="condition-highlight" style="font-size: 0.88em;">@parent.Condition</mark>
+                                        </div>
+                                    }
                                 </li>
                             }
                         </ul>
@@ -225,17 +231,23 @@
 
                 <!-- Hình con (đặc biệt hơn) -->
                 <div class="mt-3">
-                    <strong class="small text-muted d-block mb-1">Hình đặc biệt hơn (Hình con):</strong>
+                    <strong class="small text-muted d-block mb-1">Hình đặc biệt trực tiếp (Hình con):</strong>
                     @if (Model.Children.Any())
                     {
                         <ul class="list-unstyled mb-0" style="padding-left: 0;">
                             @foreach (var child in Model.Children)
                             {
-                                <li style="margin-bottom: 6px;">
+                                <li style="margin-bottom: 8px;">
                                     <span style="color: #2E8B57; font-weight: bold;">&darr;</span>
                                     <a href="/shape/@child.Slug" style="color: var(--color-ink); font-weight: 600; text-decoration: underline;">
                                         @child.Name
                                     </a>
+                                    @if (!string.IsNullOrEmpty(child.Condition))
+                                    {
+                                        <div class="small mt-1 ps-3" style="color: var(--color-pencil);">
+                                            Thành @child.Name khi: <mark class="condition-highlight" style="font-size: 0.88em;">@child.Condition</mark>
+                                        </div>
+                                    }
                                 </li>
                             }
                         </ul>

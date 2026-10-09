@@ -11,4 +11,6 @@ public interface IShapeRepository
     Task<GraphDataDto> GetGraphDataAsync();
     Task<List<SearchResultItem>> SearchAsync(string query);
     Task<CompareViewModel> CompareShapesAsync(string slug1, string slug2);
+    Task<List<ShapeSpecItem>> GetShapeSpecsAsync();
+    Task<List<ShapeConditionItem>> GetShapeConditionsAsync();
 }

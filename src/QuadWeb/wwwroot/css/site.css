@@ -765,7 +765,105 @@ p, li {
 }
 
 /* ==========================================================================
-   GIAI ĐOẠN 7: RESPONSIVE 360px & TỐI ƯU GIAO DIỆN NÂNG CAO
+   BẢNG ĐẶC TẢ 8 HÌNH & DANH SÁCH ĐIỀU KIỆN (V2.2)
+   ========================================================================== */
+.spec-table-container {
+  overflow-x: auto;
+  max-width: 100%;
+  margin-bottom: 24px;
+  background-color: #FFFFFF;
+  border: 1.5px solid var(--color-ink);
+  border-radius: 6px;
+  box-shadow: 3px 3px 0px rgba(31, 58, 147, 0.15);
+  -webkit-overflow-scrolling: touch;
+}
+
+.spec-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+  margin-bottom: 0;
+  min-width: 720px;
+}
+
+.spec-table th,
+.spec-table td {
+  padding: 10px 12px;
+  border: 1px solid var(--color-grid);
+  vertical-align: middle;
+}
+
+.spec-table th {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: 'Patrick Hand', cursive, sans-serif;
+  font-size: 1.15rem;
+  text-align: center;
+  border-bottom: 2px solid var(--color-ink);
+}
+
+.spec-table td.shape-name-cell {
+  font-family: 'Patrick Hand', cursive, sans-serif;
+  font-size: 1.25rem;
+  font-weight: bold;
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+.spec-table tr.row-family-thang {
+  background-color: var(--family-thang-bg);
+}
+
+.spec-table tr.row-family-binh-hanh {
+  background-color: var(--family-binhhanh-bg);
+}
+
+.spec-table tr.row-family-dieu {
+  background-color: var(--family-dieu-bg);
+}
+
+.spec-table tr.row-family-goc {
+  background-color: #FFFFFF;
+}
+
+.spec-optional {
+  color: #6C757D;
+  font-style: italic;
+  font-size: 0.9em;
+}
+
+.condition-highlight {
+  background-color: var(--color-highlight);
+  padding: 2px 6px;
+  border-radius: 3px;
+  color: #212529;
+  font-weight: 600;
+}
+
+.condition-list {
+  list-style: none;
+  padding-left: 0;
+  margin-top: 12px;
+}
+
+.condition-list li {
+  position: relative;
+  padding-left: 28px;
+  margin-bottom: 12px;
+  line-height: 1.5;
+  font-size: 1.05rem;
+}
+
+.condition-list li::before {
+  content: "✎";
+  position: absolute;
+  left: 0;
+  color: var(--color-ink);
+  font-size: 1.1rem;
+}
+
+/* ==========================================================================
+   GIAI ĐOẠN 7 & RESPONSIVE 360px
    ========================================================================== */
 @media (max-width: 480px) {
   .teacher-grade-stamp {

@@ -211,11 +211,11 @@ public class ShapeRepository : IShapeRepository
             });
         }
 
-        // 7. Hình tổng quát hơn (Parents qua IS_A*1..)
+        // 7. Hình cha trực tiếp kèm điều kiện (Truy vấn C)
         var parentsQuery = @"
-            MATCH (s:Shape {slug: $slug})-[:IS_A*1..]->(a:Shape)
-            RETURN DISTINCT a.slug AS slug, a.name AS name
-            ORDER BY a.name
+            MATCH (s:Shape {slug: $slug})-[r:IS_A]->(cha:Shape)
+            RETURN cha.slug AS slug, cha.name AS name, r.condition AS dieuKien
+            ORDER BY cha.sortOrder
         ";
         var parentsCursor = await session.RunAsync(parentsQuery, new { slug });
         while (await parentsCursor.FetchAsync())
@@ -223,15 +223,16 @@ public class ShapeRepository : IShapeRepository
             model.Parents.Add(new ShapeRelationItem
             {
                 Slug = parentsCursor.Current["slug"].As<string>(),
-                Name = parentsCursor.Current["name"].As<string>()
+                Name = parentsCursor.Current["name"].As<string>(),
+                Condition = parentsCursor.Current["dieuKien"].As<string?>()
             });
         }
 
-        // 8. Hình đặc biệt hơn (Children qua <-[:IS_A*1..]-)
+        // 8. Hình con trực tiếp kèm điều kiện (Truy vấn D)
         var childrenQuery = @"
-            MATCH (child:Shape)-[:IS_A*1..]->(s:Shape {slug: $slug})
-            RETURN DISTINCT child.slug AS slug, child.name AS name
-            ORDER BY child.name
+            MATCH (con:Shape)-[r:IS_A]->(s:Shape {slug: $slug})
+            RETURN con.slug AS slug, con.name AS name, r.condition AS dieuKien
+            ORDER BY con.sortOrder
         ";
         var childrenCursor = await session.RunAsync(childrenQuery, new { slug });
         while (await childrenCursor.FetchAsync())
@@ -239,7 +240,8 @@ public class ShapeRepository : IShapeRepository
             model.Children.Add(new ShapeRelationItem
             {
                 Slug = childrenCursor.Current["slug"].As<string>(),
-                Name = childrenCursor.Current["name"].As<string>()
+                Name = childrenCursor.Current["name"].As<string>(),
+                Condition = childrenCursor.Current["dieuKien"].As<string?>()
             });
         }
 
@@ -451,6 +453,8 @@ public class ShapeRepository : IShapeRepository
     {
         var result = new CompareViewModel();
         result.AllShapes = await GetAllShapesAsync();
+        result.ShapeSpecs = await GetShapeSpecsAsync();
+        result.Conditions = await GetShapeConditionsAsync();
 
         if (string.IsNullOrWhiteSpace(slug1) || string.IsNullOrWhiteSpace(slug2))
         {
@@ -555,5 +559,61 @@ public class ShapeRepository : IShapeRepository
         }
 
         return result;
+    }
+
+    public async Task<List<ShapeSpecItem>> GetShapeSpecsAsync()
+    {
+        var list = new List<ShapeSpecItem>();
+        await using var session = _driverService.CreateSession();
+        var query = @"
+            MATCH (s:Shape)
+            RETURN s.slug AS slug, s.name AS name, coalesce(s.family, 'goc') AS family,
+                   coalesce(s.specParallel, 'Không bắt buộc') AS specParallel,
+                   coalesce(s.specSides, 'Không bắt buộc') AS specSides,
+                   coalesce(s.specAngles, 'Không bắt buộc') AS specAngles,
+                   coalesce(s.specDiagonals, 'Không bắt buộc') AS specDiagonals,
+                   coalesce(s.specSymmetry, 'Không bắt buộc') AS specSymmetry
+            ORDER BY s.sortOrder;
+        ";
+        var cursor = await session.RunAsync(query);
+        while (await cursor.FetchAsync())
+        {
+            list.Add(new ShapeSpecItem
+            {
+                Slug = cursor.Current["slug"].As<string>(),
+                Name = cursor.Current["name"].As<string>(),
+                Family = cursor.Current["family"].As<string>(),
+                SpecParallel = cursor.Current["specParallel"].As<string>(),
+                SpecSides = cursor.Current["specSides"].As<string>(),
+                SpecAngles = cursor.Current["specAngles"].As<string>(),
+                SpecDiagonals = cursor.Current["specDiagonals"].As<string>(),
+                SpecSymmetry = cursor.Current["specSymmetry"].As<string>()
+            });
+        }
+        return list;
+    }
+
+    public async Task<List<ShapeConditionItem>> GetShapeConditionsAsync()
+    {
+        var list = new List<ShapeConditionItem>();
+        await using var session = _driverService.CreateSession();
+        var query = @"
+            MATCH (a:Shape)-[r:IS_A]->(b:Shape)
+            RETURN a.slug AS tu, a.name AS tenTu, b.slug AS den, b.name AS tenDen, coalesce(r.condition, '') AS dieuKien
+            ORDER BY a.sortOrder, b.sortOrder;
+        ";
+        var cursor = await session.RunAsync(query);
+        while (await cursor.FetchAsync())
+        {
+            list.Add(new ShapeConditionItem
+            {
+                FromSlug = cursor.Current["tu"].As<string>(),
+                FromName = cursor.Current["tenTu"].As<string>(),
+                ToSlug = cursor.Current["den"].As<string>(),
+                ToName = cursor.Current["tenDen"].As<string>(),
+                Condition = cursor.Current["dieuKien"].As<string>()
+            });
+        }
+        return list;
     }
 }

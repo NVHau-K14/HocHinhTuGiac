@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using QuadWeb.Middleware;
+using QuadWeb.Models;
 using QuadWeb.Services;
 
 namespace QuadWeb.Controllers;
@@ -28,17 +29,73 @@ public class CompareController : Controller
     }
 
     [HttpGet("/compare")]
-    public async Task<IActionResult> Index([FromQuery] string? shape1, [FromQuery] string? shape2)
+    public async Task<IActionResult> Index(
+        [FromQuery] string? a,
+        [FromQuery] string? b,
+        [FromQuery] string? shape1,
+        [FromQuery] string? shape2)
     {
         await PopulateLearnerAsync();
 
-        // Mặc định so sánh Hình thoi vs Hình chữ nhật nếu chưa chọn
-        var s1 = string.IsNullOrWhiteSpace(shape1) ? "hinh-thoi" : shape1.Trim().ToLowerInvariant();
-        var s2 = string.IsNullOrWhiteSpace(shape2) ? "hinh-chu-nhat" : shape2.Trim().ToLowerInvariant();
+        // Hỗ trợ cả param a,b và shape1,shape2
+        var slugA = (a ?? shape1)?.Trim().ToLowerInvariant();
+        var slugB = (b ?? shape2)?.Trim().ToLowerInvariant();
 
-        var model = await _shapeService.CompareShapesAsync(s1, s2);
-        ViewBag.Shape1Slug = s1;
-        ViewBag.Shape2Slug = s2;
+        // Mặc định chọn Hình chữ nhật vs Hình thoi nếu cả hai đều chưa truyền
+        if (string.IsNullOrEmpty(slugA) && string.IsNullOrEmpty(slugB))
+        {
+            slugA = "hinh-chu-nhat";
+            slugB = "hinh-thoi";
+        }
+        else if (string.IsNullOrEmpty(slugA))
+        {
+            slugA = "hinh-chu-nhat";
+        }
+        else if (string.IsNullOrEmpty(slugB))
+        {
+            slugB = "hinh-thoi";
+        }
+
+        ViewBag.SlugA = slugA;
+        ViewBag.SlugB = slugB;
+
+        var allShapes = await _shapeService.GetAllShapesAsync();
+        var shapeSpecs = await _shapeService.GetShapeSpecsAsync();
+        var conditions = await _shapeService.GetShapeConditionsAsync();
+
+        var model = new CompareViewModel
+        {
+            AllShapes = allShapes,
+            ShapeSpecs = shapeSpecs,
+            Conditions = conditions
+        };
+
+        // Kiểm tra chọn cùng một hình
+        if (slugA == slugB)
+        {
+            model.ErrorMessage = "Vui lòng chọn hai hình khác nhau để so sánh điểm tương đồng và khác biệt.";
+            return View(model);
+        }
+
+        // Kiểm tra tồn tại
+        var shape1Exists = allShapes.Any(s => s.Slug == slugA);
+        var shape2Exists = allShapes.Any(s => s.Slug == slugB);
+
+        if (!shape1Exists || !shape2Exists)
+        {
+            model.ErrorMessage = "Hình được chọn không tồn tại trong hệ thống. Vui lòng chọn lại.";
+            return View(model);
+        }
+
+        // Thực hiện so sánh
+        var compareResult = await _shapeService.CompareShapesAsync(slugA!, slugB!);
+        model.Shape1 = compareResult.Shape1;
+        model.Shape2 = compareResult.Shape2;
+        model.CommonProperties = compareResult.CommonProperties;
+        model.UniqueProperties1 = compareResult.UniqueProperties1;
+        model.UniqueProperties2 = compareResult.UniqueProperties2;
+        model.RelationshipDescription = compareResult.RelationshipDescription;
+        model.LowestCommonAncestorName = compareResult.LowestCommonAncestorName;
 
         return View(model);
     }

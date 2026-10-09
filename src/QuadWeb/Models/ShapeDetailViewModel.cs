@@ -48,6 +48,7 @@ public class ShapeRelationItem
 {
     public string Slug { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
+    public string? Condition { get; set; }
 }
 
 public class ShapeDetailViewModel

@@ -46,4 +46,14 @@ public class ShapeService : IShapeService
     {
         return _shapeRepository.CompareShapesAsync(slug1, slug2);
     }
+
+    public Task<List<ShapeSpecItem>> GetShapeSpecsAsync()
+    {
+        return _shapeRepository.GetShapeSpecsAsync();
+    }
+
+    public Task<List<ShapeConditionItem>> GetShapeConditionsAsync()
+    {
+        return _shapeRepository.GetShapeConditionsAsync();
+    }
 }

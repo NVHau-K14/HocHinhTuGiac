@@ -37,6 +37,7 @@ public class ShapesController : Controller
     }
 
     [HttpGet("/shape/{slug}")]
+    [HttpGet("/shapes/{slug}")]
     public async Task<IActionResult> Detail(string slug)
     {
         await PopulateLearnerAsync();

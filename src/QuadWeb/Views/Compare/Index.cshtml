@@ -1,6 +1,8 @@
 @model QuadWeb.Models.CompareViewModel
 @{
-    ViewData["Title"] = "So sánh hai hình tứ giác";
+    ViewData["Title"] = "Đặc tả và So sánh các hình tứ giác";
+    var slugA = ViewBag.SlugA as string ?? "hinh-chu-nhat";
+    var slugB = ViewBag.SlugB as string ?? "hinh-thoi";
     var s1 = Model.Shape1?.Shape;
     var s2 = Model.Shape2?.Shape;
 }
@@ -9,206 +11,366 @@
     <div class="d-flex align-items-center gap-2 mb-2">
         <a href="/" class="text-decoration-none small" style="color: var(--color-pencil);">&larr; Về trang chủ</a>
         <span class="text-muted">|</span>
-        <span class="small text-muted">Đối chiếu kiến thức</span>
+        <span class="small text-muted">Đặc tả & Đối chiếu kiến thức</span>
     </div>
     <h1 style="color: var(--color-ink); margin-bottom: 8px;">
-        <span style="color: var(--color-margin);">✎</span> So sánh & Đối chiếu hai hình tứ giác
+        <span style="color: var(--color-margin);">✎</span> Đặc tả và So sánh các hình tứ giác
     </h1>
     <p style="color: var(--color-pencil); font-size: 1.05rem;">
-        Khám phá mối quan hệ kế thừa phả hệ, điểm tương đồng và sự khác biệt về tính chất giữa hai hình bất kỳ.
+        Hệ thống bảng tiêu chí đặc tả 8 hình tứ giác, điều kiện chuyển đổi trên các cạnh quan hệ và công cụ so sánh đối chiếu trực quan.
     </p>
 </div>
 
-<!-- Form chọn 2 hình để so sánh -->
-<div class="p-3 mb-4" style="background-color: #FFFFFF; border: 1.5px solid var(--color-ink); border-radius: 8px; box-shadow: 3px 3px 0px rgba(31, 58, 147, 0.15);">
-    <form method="get" action="/compare" class="row g-3 align-items-end">
-        <div class="col-md-5">
-            <label class="form-label fw-bold" style="color: var(--color-ink); font-family: 'Patrick Hand', cursive; font-size: 1.25rem;">
-                Chọn Hình thứ nhất:
-            </label>
-            <select name="shape1" class="form-select" style="font-family: 'Patrick Hand', cursive; font-size: 1.2rem; border: 1.5px solid var(--color-ink);">
-                @foreach (var sh in Model.AllShapes)
-                {
-                    <option value="@sh.Slug" selected="@(sh.Slug == s1?.Slug)">@sh.Name</option>
-                }
-            </select>
+<!-- ========================================================================
+     PHẦN 1: BẢNG ĐẶC TẢ 8 HÌNH TỨ GIÁC
+     ======================================================================== -->
+<section class="mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 style="font-family: 'Patrick Hand', cursive; color: var(--color-ink); font-size: 1.7rem; margin-bottom: 2px;">
+                I. Bảng đặc tả 8 hình tứ giác
+            </h2>
+            <p class="small text-muted mb-0">
+                Đặc tả theo 5 tiêu chí: cạnh song song, cạnh bằng nhau, góc, đường chéo và trục đối xứng.
+            </p>
         </div>
-        <div class="col-md-5">
-            <label class="form-label fw-bold" style="color: var(--color-ink); font-family: 'Patrick Hand', cursive; font-size: 1.25rem;">
-                Chọn Hình thứ hai:
-            </label>
-            <select name="shape2" class="form-select" style="font-family: 'Patrick Hand', cursive; font-size: 1.2rem; border: 1.5px solid var(--color-ink);">
-                @foreach (var sh in Model.AllShapes)
-                {
-                    <option value="@sh.Slug" selected="@(sh.Slug == s2?.Slug)">@sh.Name</option>
-                }
-            </select>
-        </div>
-        <div class="col-md-2">
-            <button type="submit" class="btn-pen w-100" style="font-size: 1.15rem; padding: 7px 12px;">
-                So sánh ✎
-            </button>
-        </div>
-    </form>
-</div>
+        <span class="badge" style="background-color: var(--color-ink); color: #fff; font-size: 0.85rem;">
+            8 hình &bull; 5 tiêu chí
+        </span>
+    </div>
 
-@if (s1 != null && s2 != null)
-{
-    <!-- Khung Mối quan hệ phả hệ trong đồ thị -->
-    <div class="p-3 mb-4" style="background-color: var(--color-highlight); border: 2px solid var(--color-ink); border-radius: 6px;">
-        <div class="d-flex align-items-center gap-2 mb-1">
-            <span style="font-size: 1.4rem;">🌳</span>
-            <h4 style="font-family: 'Patrick Hand', cursive; font-size: 1.45rem; color: var(--color-ink); margin-bottom: 0;">
-                Mối quan hệ hình học trong Đồ thị Tứ giác:
-            </h4>
+    <!-- Khung cuộn ngang riêng biệt trên màn hình nhỏ -->
+    <div class="spec-table-container">
+        <table class="spec-table">
+            <thead>
+                <tr>
+                    <th style="min-width: 140px; text-align: left;">Hình tứ giác</th>
+                    <th style="min-width: 160px;">Cạnh song song</th>
+                    <th style="min-width: 150px;">Cạnh bằng nhau</th>
+                    <th style="min-width: 150px;">Góc</th>
+                    <th style="min-width: 180px;">Đường chéo</th>
+                    <th style="min-width: 150px;">Trục đối xứng</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var sp in Model.ShapeSpecs)
+                {
+                    var familyClass = sp.Family switch
+                    {
+                        "thang" => "row-family-thang",
+                        "binh-hanh" => "row-family-binh-hanh",
+                        "dieu" => "row-family-dieu",
+                        _ => "row-family-goc"
+                    };
+
+                    <tr class="@familyClass">
+                        <td class="shape-name-cell">
+                            <a href="/shapes/@sp.Slug" style="color: var(--color-ink); text-decoration: underline; text-underline-offset: 3px;">
+                                @sp.Name
+                            </a>
+                        </td>
+                        <td>
+                            @if (sp.SpecParallel == "Không bắt buộc")
+                            {
+                                <span class="spec-optional">Không bắt buộc</span>
+                            }
+                            else
+                            {
+                                <span>@sp.SpecParallel</span>
+                            }
+                        </td>
+                        <td>
+                            @if (sp.SpecSides == "Không bắt buộc")
+                            {
+                                <span class="spec-optional">Không bắt buộc</span>
+                            }
+                            else
+                            {
+                                <span>@sp.SpecSides</span>
+                            }
+                        </td>
+                        <td>
+                            @if (sp.SpecAngles == "Không bắt buộc")
+                            {
+                                <span class="spec-optional">Không bắt buộc</span>
+                            }
+                            else
+                            {
+                                <span>@sp.SpecAngles</span>
+                            }
+                        </td>
+                        <td>
+                            @if (sp.SpecDiagonals == "Không bắt buộc" || sp.SpecDiagonals.StartsWith("Không bắt buộc"))
+                            {
+                                <span class="spec-optional">@sp.SpecDiagonals</span>
+                            }
+                            else
+                            {
+                                <span>@sp.SpecDiagonals</span>
+                            }
+                        </td>
+                        <td>
+                            @if (sp.SpecSymmetry == "Không bắt buộc" || sp.SpecSymmetry.StartsWith("Không bắt buộc"))
+                            {
+                                <span class="spec-optional">@sp.SpecSymmetry</span>
+                            }
+                            else
+                            {
+                                <span>@sp.SpecSymmetry</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <div class="small text-muted fst-italic">
+        * Chú thích: Màu tím nhạt (Họ hình thang), màu xanh lục nhạt (Họ hình bình hành), màu hồng nhạt (Họ hình diều). "Không bắt buộc" nghĩa là tính chất đó không áp dụng cho mọi hình thuộc loại này.
+    </div>
+</section>
+
+<!-- ========================================================================
+     PHẦN 2: ĐIỀU KIỆN GIỮA CÁC HÌNH (QUAN HỆ IS_A)
+     ======================================================================== -->
+<section class="mb-5">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+            <h2 style="font-family: 'Patrick Hand', cursive; color: var(--color-ink); font-size: 1.7rem; margin-bottom: 2px;">
+                II. Điều kiện chuyển đổi giữa các hình (10 quan hệ IS_A)
+            </h2>
+            <p class="small text-muted mb-0">
+                Điều kiện cần bổ sung để một hình tổng quát trở thành hình đặc biệt hơn.
+            </p>
         </div>
-        <p class="mb-2" style="font-size: 1.05rem; color: var(--color-text); line-height: 1.5;">
-            @Model.RelationshipDescription
+        <button type="button" class="btn-pen-outline" onclick="openGraphModal()" style="font-size: 1.05rem; padding: 5px 16px;">
+            Xem sơ đồ quan hệ 🌳
+        </button>
+    </div>
+
+    <div class="p-4" style="background-color: #FFFFFF; border: 1.5px solid var(--color-ink); border-radius: 6px; box-shadow: 2px 2px 0px rgba(31, 58, 147, 0.1);">
+        <ul class="condition-list mb-0">
+            @foreach (var c in Model.Conditions)
+            {
+                <li>
+                    <strong>@c.FromName</strong> là <strong>@c.ToName</strong> khi: 
+                    <mark class="condition-highlight">@c.Condition</mark>
+                </li>
+            }
+        </ul>
+    </div>
+</section>
+
+<!-- ========================================================================
+     PHẦN 3: SO SÁNH HAI HÌNH
+     ======================================================================== -->
+<section class="mb-4">
+    <div class="mb-3">
+        <h2 style="font-family: 'Patrick Hand', cursive; color: var(--color-ink); font-size: 1.7rem; margin-bottom: 2px;">
+            III. So sánh chi tiết hai hình
+        </h2>
+        <p class="small text-muted mb-0">
+            Chọn hai hình khác nhau để đối chiếu điểm tương đồng, điểm khác biệt và phân tích quan hệ phả hệ.
         </p>
-        <div class="small" style="color: var(--color-pencil);">
-            Tổ tiên chung gần nhất: <strong style="color: var(--color-ink);">@Model.LowestCommonAncestorName</strong>
-        </div>
     </div>
 
-    <!-- Bảng so sánh 2 cột trực quan -->
-    <div class="row g-3 mb-4">
-        <!-- Cột Hình 1 -->
-        <div class="col-md-6">
-            <div class="p-3 h-100" style="background-color: #FFFFFF; border: 1.5px solid var(--color-ink); border-radius: 6px; box-shadow: 2px 2px 0px rgba(0,0,0,0.05);">
-                <div class="text-center mb-3">
-                    <div style="max-width: 160px; margin: 0 auto;">
-                        @await Html.PartialAsync("_ShapeSvg", s1.Slug)
+    <!-- Form chọn 2 hình để so sánh -->
+    <div class="p-3 mb-4" style="background-color: #FFFFFF; border: 1.5px solid var(--color-ink); border-radius: 8px; box-shadow: 3px 3px 0px rgba(31, 58, 147, 0.15);">
+        <form method="get" action="/compare" class="row g-3 align-items-end">
+            <div class="col-md-5">
+                <label class="form-label fw-bold" style="color: var(--color-ink); font-family: 'Patrick Hand', cursive; font-size: 1.25rem;">
+                    Chọn Hình thứ nhất (A):
+                </label>
+                <select name="a" class="form-select" style="font-family: 'Patrick Hand', cursive; font-size: 1.2rem; border: 1.5px solid var(--color-ink);">
+                    @foreach (var sh in Model.AllShapes)
+                    {
+                        <option value="@sh.Slug" selected="@(sh.Slug == slugA)">@sh.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-5">
+                <label class="form-label fw-bold" style="color: var(--color-ink); font-family: 'Patrick Hand', cursive; font-size: 1.25rem;">
+                    Chọn Hình thứ hai (B):
+                </label>
+                <select name="b" class="form-select" style="font-family: 'Patrick Hand', cursive; font-size: 1.2rem; border: 1.5px solid var(--color-ink);">
+                    @foreach (var sh in Model.AllShapes)
+                    {
+                        <option value="@sh.Slug" selected="@(sh.Slug == slugB)">@sh.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn-pen w-100" style="font-size: 1.15rem; padding: 7px 12px;">
+                    So sánh ✎
+                </button>
+            </div>
+        </form>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="p-3 mb-4" style="background-color: #FEF7E0; border: 1.5px dashed #B06000; border-radius: 6px; color: #8A4800;">
+            <strong>Lưu ý:</strong> @Model.ErrorMessage
+        </div>
+    }
+    else if (s1 != null && s2 != null)
+    {
+        <!-- Khối 1: Quan hệ phả hệ trong đồ thị -->
+        <div class="p-3 mb-4" style="background-color: var(--color-highlight); border: 2px solid var(--color-ink); border-radius: 6px;">
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span style="font-size: 1.4rem;">🌳</span>
+                <h4 style="font-family: 'Patrick Hand', cursive; font-size: 1.45rem; color: var(--color-ink); margin-bottom: 0;">
+                    Quan hệ giữa hai hình:
+                </h4>
+            </div>
+            <p class="mb-2" style="font-size: 1.05rem; color: var(--color-text); line-height: 1.5;">
+                @Model.RelationshipDescription
+            </p>
+            @if (!string.IsNullOrEmpty(Model.LowestCommonAncestorName))
+            {
+                <div class="small" style="color: var(--color-pencil);">
+                    Hình tổng quát chung gần nhất: <strong style="color: var(--color-ink);">@Model.LowestCommonAncestorName</strong>
+                </div>
+            }
+        </div>
+
+        <!-- Khối 2: Giống nhau (Tính chất chung) -->
+        <div class="p-3 mb-4" style="background-color: #FFFFFF; border: 1.5px solid var(--color-grid); border-left: 4px solid var(--color-ink); border-radius: 6px;">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h4 style="font-family: 'Patrick Hand', cursive; color: var(--color-ink); font-size: 1.4rem; margin-bottom: 0;">
+                    🤝 Giống nhau: Các tính chất mà cả @s1.Name và @s2.Name cùng sở hữu
+                </h4>
+                <span class="badge" style="background-color: var(--color-ink); color: #fff;">
+                    @Model.CommonProperties.Count tính chất
+                </span>
+            </div>
+            @if (Model.CommonProperties.Any())
+            {
+                <ul class="entry-list mb-0">
+                    @foreach (var prop in Model.CommonProperties)
+                    {
+                        <li>@prop.Content</li>
+                    }
+                </ul>
+            }
+            else
+            {
+                <p class="small text-muted mb-0 fst-italic">Không có tính chất chung trực tiếp ngoài các tính chất cơ bản của tứ giác.</p>
+            }
+        </div>
+
+        <!-- Khối 3: Khác nhau (Chia hai cột song song A và B) -->
+        <div class="mb-4">
+            <h4 style="font-family: 'Patrick Hand', cursive; color: var(--color-margin); font-size: 1.45rem; margin-bottom: 12px;">
+                ⚡ Khác nhau: Điểm riêng biệt của từng hình
+            </h4>
+            <div class="row g-3">
+                <!-- Cột A -->
+                <div class="col-md-6">
+                    <div class="p-3 h-100" style="background-color: #FFFFFF; border: 1.5px solid var(--color-ink); border-radius: 6px; box-shadow: 2px 2px 0px rgba(0,0,0,0.05);">
+                        <div class="text-center mb-3">
+                            <div style="max-width: 140px; margin: 0 auto;">
+                                @await Html.PartialAsync("_ShapeSvg", s1.Slug)
+                            </div>
+                            <h3 style="font-family: 'Patrick Hand', cursive; color: var(--color-ink); font-size: 1.6rem; margin-top: 6px; margin-bottom: 2px;">
+                                @s1.Name
+                            </h3>
+                            <span class="badge" style="background-color: var(--color-pencil); color: #fff; font-size: 0.8rem;">
+                                Riêng: @Model.UniqueProperties1.Count tính chất
+                            </span>
+                        </div>
+
+                        <div>
+                            <strong style="color: var(--color-margin); font-family: 'Patrick Hand', cursive; font-size: 1.15rem;">
+                                Tính chất chỉ có ở @s1.Name:
+                            </strong>
+                            @if (Model.UniqueProperties1.Any())
+                            {
+                                <ul class="entry-list mt-1">
+                                    @foreach (var prop in Model.UniqueProperties1)
+                                    {
+                                        <li style="font-size: 0.95rem;">@prop.Content</li>
+                                    }
+                                </ul>
+                            }
+                            else
+                            {
+                                <p class="small text-muted fst-italic mt-2 mb-0">
+                                    Không có (vì @s1.Name là hình tổng quát hơn so với @s2.Name).
+                                </p>
+                            }
+                        </div>
                     </div>
-                    <h3 style="font-family: 'Patrick Hand', cursive; color: var(--color-ink); font-size: 1.7rem; margin-top: 8px; margin-bottom: 2px;">
-                        @s1.Name
-                    </h3>
-                    <span class="small text-muted">@s1.ShortDescription</span>
                 </div>
 
-                <div class="mb-3">
-                    <strong style="color: var(--color-ink); font-family: 'Patrick Hand', cursive; font-size: 1.2rem;">Định nghĩa:</strong>
-                    <ul class="entry-list mt-1">
-                        @foreach (var def in Model.Shape1!.Definitions)
+                <!-- Cột B -->
+                <div class="col-md-6">
+                    <div class="p-3 h-100" style="background-color: #FFFFFF; border: 1.5px solid var(--color-ink); border-radius: 6px; box-shadow: 2px 2px 0px rgba(0,0,0,0.05);">
+                        <div class="text-center mb-3">
+                            <div style="max-width: 140px; margin: 0 auto;">
+                                @await Html.PartialAsync("_ShapeSvg", s2.Slug)
+                            </div>
+                            <h3 style="font-family: 'Patrick Hand', cursive; color: var(--color-ink); font-size: 1.6rem; margin-top: 6px; margin-bottom: 2px;">
+                                @s2.Name
+                            </h3>
+                            <span class="badge" style="background-color: var(--color-pencil); color: #fff; font-size: 0.8rem;">
+                                Riêng: @Model.UniqueProperties2.Count tính chất
+                            </span>
+                        </div>
+
+                        <div>
+                            <strong style="color: var(--color-margin); font-family: 'Patrick Hand', cursive; font-size: 1.15rem;">
+                                Tính chất chỉ có ở @s2.Name:
+                            </strong>
+                            @if (Model.UniqueProperties2.Any())
+                            {
+                                <ul class="entry-list mt-1">
+                                    @foreach (var prop in Model.UniqueProperties2)
+                                    {
+                                        <li style="font-size: 0.95rem;">@prop.Content</li>
+                                    }
+                                </ul>
+                            }
+                            else
+                            {
+                                <p class="small text-muted fst-italic mt-2 mb-0">
+                                    Không có (vì @s2.Name là hình tổng quát hơn so với @s1.Name).
+                                </p>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Đối chiếu công thức tính toán -->
+        <div class="p-3 mb-4" style="background-color: var(--color-paper); border: 1.5px solid var(--color-grid); border-radius: 6px;">
+            <h4 style="font-family: 'Patrick Hand', cursive; color: var(--color-ink); font-size: 1.4rem; margin-bottom: 12px;">
+                📐 Đối chiếu công thức diện tích & chu vi:
+            </h4>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <strong>Công thức của @s1.Name:</strong>
+                    <ul class="list-unstyled mt-2">
+                        @foreach (var f in Model.Shape1!.Formulas)
                         {
-                            <li style="font-size: 0.95rem;">@def.Content</li>
+                            <li class="mb-2">
+                                <span>@f.Name:</span> <code>@f.Expression</code>
+                            </li>
                         }
                     </ul>
                 </div>
-
-                <div>
-                    <strong style="color: var(--color-margin); font-family: 'Patrick Hand', cursive; font-size: 1.2rem;">
-                        Tính chất riêng biệt của @s1.Name:
-                    </strong>
-                    @if (Model.UniqueProperties1.Any())
-                    {
-                        <ul class="entry-list mt-1">
-                            @foreach (var prop in Model.UniqueProperties1)
-                            {
-                                <li style="font-size: 0.95rem;">@prop.Content</li>
-                            }
-                        </ul>
-                    }
-                    else
-                    {
-                        <p class="small text-muted fst-italic">Không có tính chất riêng so với @s2.Name (hình con kế thừa toàn bộ).</p>
-                    }
-                </div>
-            </div>
-        </div>
-
-        <!-- Cột Hình 2 -->
-        <div class="col-md-6">
-            <div class="p-3 h-100" style="background-color: #FFFFFF; border: 1.5px solid var(--color-ink); border-radius: 6px; box-shadow: 2px 2px 0px rgba(0,0,0,0.05);">
-                <div class="text-center mb-3">
-                    <div style="max-width: 160px; margin: 0 auto;">
-                        @await Html.PartialAsync("_ShapeSvg", s2.Slug)
-                    </div>
-                    <h3 style="font-family: 'Patrick Hand', cursive; color: var(--color-ink); font-size: 1.7rem; margin-top: 8px; margin-bottom: 2px;">
-                        @s2.Name
-                    </h3>
-                    <span class="small text-muted">@s2.ShortDescription</span>
-                </div>
-
-                <div class="mb-3">
-                    <strong style="color: var(--color-ink); font-family: 'Patrick Hand', cursive; font-size: 1.2rem;">Định nghĩa:</strong>
-                    <ul class="entry-list mt-1">
-                        @foreach (var def in Model.Shape2!.Definitions)
+                <div class="col-md-6">
+                    <strong>Công thức của @s2.Name:</strong>
+                    <ul class="list-unstyled mt-2">
+                        @foreach (var f in Model.Shape2!.Formulas)
                         {
-                            <li style="font-size: 0.95rem;">@def.Content</li>
+                            <li class="mb-2">
+                                <span>@f.Name:</span> <code>@f.Expression</code>
+                            </li>
                         }
                     </ul>
                 </div>
-
-                <div>
-                    <strong style="color: var(--color-margin); font-family: 'Patrick Hand', cursive; font-size: 1.2rem;">
-                        Tính chất riêng biệt của @s2.Name:
-                    </strong>
-                    @if (Model.UniqueProperties2.Any())
-                    {
-                        <ul class="entry-list mt-1">
-                            @foreach (var prop in Model.UniqueProperties2)
-                            {
-                                <li style="font-size: 0.95rem;">@prop.Content</li>
-                            }
-                        </ul>
-                    }
-                    else
-                    {
-                        <p class="small text-muted fst-italic">Không có tính chất riêng so với @s1.Name (hình con kế thừa toàn bộ).</p>
-                    }
-                </div>
             </div>
         </div>
-    </div>
-
-    <!-- Khung Tính chất chung mà cả hai cùng sở hữu -->
-    <div class="p-3 mb-4" style="background-color: #FFFFFF; border: 1.5px solid var(--color-grid); border-left: 4px solid var(--color-ink); border-radius: 6px;">
-        <h4 style="font-family: 'Patrick Hand', cursive; color: var(--color-ink); font-size: 1.4rem; margin-bottom: 8px;">
-            🤝 Điểm tương đồng: Các tính chất mà cả @s1.Name và @s2.Name cùng sở hữu:
-        </h4>
-        @if (Model.CommonProperties.Any())
-        {
-            <ul class="entry-list mb-0">
-                @foreach (var prop in Model.CommonProperties)
-                {
-                    <li>@prop.Content</li>
-                }
-            </ul>
-        }
-        else
-        {
-            <p class="small text-muted mb-0">Chưa ghi nhận tính chất chung trực tiếp ngoài các tính chất cơ bản của tứ giác.</p>
-        }
-    </div>
-
-    <!-- Đối chiếu công thức tính toán -->
-    <div class="p-3 mb-4" style="background-color: var(--color-paper); border: 1.5px solid var(--color-grid); border-radius: 6px;">
-        <h4 style="font-family: 'Patrick Hand', cursive; color: var(--color-ink); font-size: 1.4rem; margin-bottom: 12px;">
-            📐 Đối chiếu công thức diện tích & chu vi:
-        </h4>
-        <div class="row g-3">
-            <div class="col-md-6">
-                <strong>Công thức của @s1.Name:</strong>
-                <ul class="list-unstyled mt-2">
-                    @foreach (var f in Model.Shape1!.Formulas)
-                    {
-                        <li class="mb-2">
-                            <span>@f.Name:</span> <code>@f.Expression</code>
-                        </li>
-                    }
-                </ul>
-            </div>
-            <div class="col-md-6">
-                <strong>Công thức của @s2.Name:</strong>
-                <ul class="list-unstyled mt-2">
-                    @foreach (var f in Model.Shape2!.Formulas)
-                    {
-                        <li class="mb-2">
-                            <span>@f.Name:</span> <code>@f.Expression</code>
-                        </li>
-                    }
-                </ul>
-            </div>
-        </div>
-    </div>
-}
+    }
+</section>
