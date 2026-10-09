@@ -16,6 +16,22 @@
             </button>
         </div>
 
+        <!-- Bộ chọn 2 chiều đọc (Mục 3.2 PROMPT_SUA_SO_DO_v2_3) -->
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+            <div class="graph-direction-toggle d-inline-flex p-1" style="background-color: var(--color-paper); border: 1.5px solid var(--color-grid); border-radius: 6px;" role="radiogroup" aria-label="Chọn chiều đọc sơ đồ">
+                <button type="button" class="btn-segmented active" id="btnModeCondition" data-mode="condition" role="radio" aria-checked="true">
+                    &darr; Thêm điều kiện (Mặc định)
+                </button>
+                <button type="button" class="btn-segmented" id="btnModeIsA" data-mode="is_a" role="radio" aria-checked="false">
+                    &uarr; Theo quan hệ IS_A
+                </button>
+            </div>
+            <div class="small text-muted d-flex align-items-center gap-2" id="graphModeBadge">
+                <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: var(--color-ink);"></span>
+                <span id="graphModeHint">Đang xem: Hình cha &rarr; Hình con (kèm điều kiện)</span>
+            </div>
+        </div>
+
         <!-- Trạng thái tải -->
         <div id="graphLoading" class="py-5 text-center" style="display: none;">
             <div class="spinner-border text-primary" role="status">

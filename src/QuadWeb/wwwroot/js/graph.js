@@ -1,10 +1,14 @@
 // ==========================================================================
-// VIS-NETWORK GRAPH VIEWER (PBI-11)
+// VIS-NETWORK GRAPH VIEWER (PBI-11 / v2.3)
 // Lazy load CDN chỉ khi người dùng bấm nút "Xem sơ đồ quan hệ"
 // ==========================================================================
 
 let networkInstance = null;
 let graphDataCache = null;
+let currentGraphMode = 'condition'; // 'condition' (Thêm điều kiện) hoặc 'is_a' (Theo IS_A)
+let selectedEdgeId = null;
+let nodesDataSet = null;
+let edgesDataSet = null;
 
 function openGraphModal() {
     const modal = document.getElementById('graphModal');
@@ -28,6 +32,7 @@ function closeGraphModal() {
     const modal = document.getElementById('graphModal');
     if (!modal) return;
 
+    resetGraphHighlight();
     modal.style.display = 'none';
     document.body.style.overflow = 'auto';
 }
@@ -81,6 +86,62 @@ function loadVisScript(callback) {
     document.head.appendChild(script);
 }
 
+// Xây dựng danh sách cạnh hiển thị theo chế độ đọc
+function buildVisEdges(edgesRaw, mode) {
+    return edgesRaw.map(e => {
+        let from, to, label;
+        if (mode === 'is_a') {
+            // Chiều: Hình con -> Hình cha (IS_A)
+            from = e.from; // slug con
+            to = e.to;     // slug cha
+            label = `là ${e.toName ? e.toName.toLowerCase() : 'hình cha'}`;
+        } else {
+            // Chiều: Hình cha -> Hình con (+ điều kiện cần thêm)
+            from = e.to;   // slug cha
+            to = e.from;   // slug con
+            const condText = e.conditionShort || e.condition || '';
+            label = condText ? `+ ${condText}` : '';
+        }
+
+        return {
+            id: `edge_${e.from}_${e.to}`,
+            from: from,
+            to: to,
+            childSlug: e.from,
+            parentSlug: e.to,
+            fromName: e.fromName,
+            toName: e.toName,
+            condition: e.condition,
+            conditionShort: e.conditionShort,
+            label: label,
+            arrows: {
+                to: { enabled: true, scaleFactor: 1.0 }
+            },
+            width: 2.2,
+            selectionWidth: 5,
+            hoverWidth: 3.5,
+            color: {
+                color: '#1F3A93',
+                highlight: '#D64550',
+                hover: '#D64550'
+            },
+            font: {
+                face: 'Be Vietnam Pro',
+                size: 13,
+                color: '#1F3A93',
+                background: '#FFE66D',
+                strokeWidth: 0,
+                align: 'horizontal' // Nhãn luôn nằm ngang
+            },
+            smooth: {
+                type: 'cubicBezier',
+                forceDirection: 'vertical',
+                roundness: 0.32
+            }
+        };
+    });
+}
+
 function renderVisNetwork(container, data) {
     if (!container || !window.vis) return;
 
@@ -105,6 +166,7 @@ function renderVisNetwork(container, data) {
             label: n.label,
             x: coords.x,
             y: coords.y,
+            originalBg: n.color || '#FAFCFD',
             shape: 'box',
             margin: { top: 9, bottom: 9, left: 16, right: 16 },
             color: {
@@ -125,50 +187,14 @@ function renderVisNetwork(container, data) {
         };
     });
 
-    // Chuẩn bị dữ liệu Edges:
-    // Mặc định "Thêm điều kiện": Mũi tên đi từ hình cha xuống hình con (e.to -> e.from)
-    // Nhãn: "+ điều kiện", nằm ngang, nền dạ quang #FFE66D, cỡ chữ 13px
-    const visEdges = data.edges.map((e, index) => {
-        const condText = e.conditionShort || e.condition || '';
-        const edgeLabel = condText ? `+ ${condText}` : '';
+    const visEdges = buildVisEdges(data.edges, currentGraphMode);
 
-        return {
-            id: `edge_${e.from}_${e.to}`,
-            from: e.to,    // Hình cha (tổng quát hơn, ở trên)
-            to: e.from,    // Hình con (đặc biệt hơn, ở dưới)
-            childSlug: e.from,
-            parentSlug: e.to,
-            label: edgeLabel,
-            arrows: {
-                to: { enabled: true, scaleFactor: 1.0 }
-            },
-            width: 2,
-            selectionWidth: 4,
-            hoverWidth: 3,
-            color: {
-                color: '#1F3A93',
-                highlight: '#D64550',
-                hover: '#D64550'
-            },
-            font: {
-                face: 'Be Vietnam Pro',
-                size: 13,
-                color: '#1F3A93',
-                background: '#FFE66D',
-                strokeWidth: 0,
-                align: 'horizontal' // Nằm ngang, không xoay theo đường cong
-            },
-            smooth: {
-                type: 'cubicBezier',
-                forceDirection: 'vertical',
-                roundness: 0.32
-            }
-        };
-    });
+    nodesDataSet = new vis.DataSet(visNodes);
+    edgesDataSet = new vis.DataSet(visEdges);
 
     const networkData = {
-        nodes: new vis.DataSet(visNodes),
-        edges: new vis.DataSet(visEdges)
+        nodes: nodesDataSet,
+        edges: edgesDataSet
     };
 
     const options = {
@@ -183,11 +209,33 @@ function renderVisNetwork(container, data) {
 
     networkInstance = new vis.Network(container, networkData, options);
 
-    // Bấm vào node sẽ chuyển hướng tới bài học hình học
+    // Xử lý sự kiện hover đổi con trỏ dạng pointer
+    networkInstance.on('hoverEdge', function () {
+        container.style.cursor = 'pointer';
+    });
+    networkInstance.on('blurEdge', function () {
+        container.style.cursor = 'default';
+    });
+    networkInstance.on('hoverNode', function () {
+        container.style.cursor = 'pointer';
+    });
+    networkInstance.on('blurNode', function () {
+        container.style.cursor = 'default';
+    });
+
+    // Bấm vào node hoặc cạnh
     networkInstance.on('click', function (params) {
         if (params.nodes && params.nodes.length > 0) {
+            // 1. Bấm vào HÌNH: Mở bài học chi tiết như cũ
             const clickedId = params.nodes[0];
             window.location.href = '/shapes/' + clickedId;
+        } else if (params.edges && params.edges.length > 0) {
+            // 2. Bấm vào CẠNH (hoặc nhãn cạnh): Chọn cạnh, tô nổi và làm mờ phần còn lại
+            const edgeId = params.edges[0];
+            highlightSelectedEdge(edgeId);
+        } else {
+            // 3. Bấm ra ngoài khoảng trống canvas: Bỏ chọn, khôi phục bình thường
+            resetGraphHighlight();
         }
     });
 
@@ -197,6 +245,158 @@ function renderVisNetwork(container, data) {
             networkInstance.fit({ animation: false });
         }
     }, 150);
+}
+
+// Chuyển đổi giữa 2 chiều đọc sơ đồ (Mục 3.2)
+function setGraphMode(mode) {
+    if (currentGraphMode === mode) return;
+    currentGraphMode = mode;
+
+    const btnCondition = document.getElementById('btnModeCondition');
+    const btnIsA = document.getElementById('btnModeIsA');
+    const descEl = document.getElementById('graphModalDesc');
+    const hintEl = document.getElementById('graphModeHint');
+
+    if (mode === 'is_a') {
+        if (btnCondition) {
+            btnCondition.classList.remove('active');
+            btnCondition.setAttribute('aria-checked', 'false');
+        }
+        if (btnIsA) {
+            btnIsA.classList.add('active');
+            btnIsA.setAttribute('aria-checked', 'true');
+        }
+        if (descEl) {
+            descEl.textContent = 'Mũi tên đi từ hình đặc biệt lên hình tổng quát. Chữ trên mũi tên cho biết hình con là trường hợp của hình cha nào. Bấm vào mũi tên để xem giải thích chi tiết; bấm vào hình để mở bài học.';
+        }
+        if (hintEl) {
+            hintEl.textContent = 'Đang xem: Hình con → Hình cha (quan hệ IS_A)';
+        }
+    } else {
+        if (btnCondition) {
+            btnCondition.classList.add('active');
+            btnCondition.setAttribute('aria-checked', 'true');
+        }
+        if (btnIsA) {
+            btnIsA.classList.remove('active');
+            btnIsA.setAttribute('aria-checked', 'false');
+        }
+        if (descEl) {
+            descEl.textContent = 'Mũi tên đi từ hình tổng quát đến hình đặc biệt. Chữ trên mũi tên là điều kiện cần thêm. Bấm vào mũi tên để xem vì sao hai hình có quan hệ; bấm vào hình để mở bài học.';
+        }
+        if (hintEl) {
+            hintEl.textContent = 'Đang xem: Hình cha → Hình con (kèm điều kiện)';
+        }
+    }
+
+    // Tái cấu trúc danh sách cạnh
+    if (edgesDataSet && graphDataCache) {
+        resetGraphHighlight();
+        const newEdges = buildVisEdges(graphDataCache.edges, currentGraphMode);
+        edgesDataSet.clear();
+        edgesDataSet.add(newEdges);
+    }
+}
+
+// Tô nổi cạnh được chọn và làm mờ các hình/cạnh khác (Mục 3.4)
+function highlightSelectedEdge(edgeId) {
+    selectedEdgeId = edgeId;
+    if (!edgesDataSet || !nodesDataSet) return;
+
+    const edge = edgesDataSet.get(edgeId);
+    if (!edge) return;
+
+    const endNode1 = edge.from;
+    const endNode2 = edge.to;
+
+    // 1. Cập nhật Edges: cạnh được chọn tô Lề đỏ #D64550 dày, các cạnh khác mờ đi
+    const allEdges = edgesDataSet.get();
+    const edgeUpdates = allEdges.map(e => {
+        if (e.id === edgeId) {
+            return {
+                id: e.id,
+                color: { color: '#D64550', highlight: '#D64550', hover: '#D64550' },
+                width: 4.5,
+                font: {
+                    color: '#ffffff',
+                    background: '#D64550',
+                    face: 'Be Vietnam Pro',
+                    size: 13,
+                    strokeWidth: 0,
+                    align: 'horizontal'
+                }
+            };
+        } else {
+            return {
+                id: e.id,
+                color: { color: 'rgba(31, 58, 147, 0.16)', highlight: 'rgba(31, 58, 147, 0.16)' },
+                width: 1.5,
+                font: {
+                    color: 'rgba(31, 58, 147, 0.28)',
+                    background: 'rgba(255, 230, 109, 0.25)',
+                    face: 'Be Vietnam Pro',
+                    size: 13,
+                    strokeWidth: 0,
+                    align: 'horizontal'
+                }
+            };
+        }
+    });
+    edgesDataSet.update(edgeUpdates);
+
+    // 2. Cập nhật Nodes: 2 node ở 2 đầu có viền đậm, các node khác mờ đi
+    const allNodes = nodesDataSet.get();
+    const nodeUpdates = allNodes.map(n => {
+        if (n.id === endNode1 || n.id === endNode2) {
+            return {
+                id: n.id,
+                borderWidth: 3.5,
+                color: {
+                    border: '#D64550',
+                    background: n.originalBg || '#FAFCFD',
+                    highlight: { border: '#D64550', background: n.originalBg || '#FAFCFD' }
+                },
+                font: { face: 'Patrick Hand', size: 17, color: '#1F3A93' }
+            };
+        } else {
+            return {
+                id: n.id,
+                borderWidth: 1,
+                color: {
+                    border: 'rgba(31, 58, 147, 0.25)',
+                    background: '#F8FAFC',
+                    highlight: { border: 'rgba(31, 58, 147, 0.25)', background: '#F8FAFC' }
+                },
+                font: { face: 'Patrick Hand', size: 15, color: 'rgba(31, 58, 147, 0.28)' }
+            };
+        }
+    });
+    nodesDataSet.update(nodeUpdates);
+}
+
+// Bỏ chọn cạnh, khôi phục màu sắc ban đầu (Mục 3.4)
+function resetGraphHighlight() {
+    selectedEdgeId = null;
+    if (!edgesDataSet || !nodesDataSet || !graphDataCache) return;
+
+    // Khôi phục Edges
+    const newEdges = buildVisEdges(graphDataCache.edges, currentGraphMode);
+    edgesDataSet.clear();
+    edgesDataSet.add(newEdges);
+
+    // Khôi phục Nodes
+    const allNodes = nodesDataSet.get();
+    const nodeUpdates = allNodes.map(n => ({
+        id: n.id,
+        borderWidth: 2,
+        color: {
+            background: n.originalBg || '#FAFCFD',
+            border: '#1F3A93',
+            highlight: { background: '#FFE66D', border: '#D64550' }
+        },
+        font: { face: 'Patrick Hand', size: 16, color: '#1F3A93' }
+    }));
+    nodesDataSet.update(nodeUpdates);
 }
 
 // Bắt sự kiện khi DOM tải xong
@@ -223,6 +423,17 @@ document.addEventListener('DOMContentLoaded', function () {
         btnClose.addEventListener('click', closeGraphModal);
     }
 
+    // Nút chuyển chiều đọc
+    const btnCondition = document.getElementById('btnModeCondition');
+    if (btnCondition) {
+        btnCondition.addEventListener('click', () => setGraphMode('condition'));
+    }
+
+    const btnIsA = document.getElementById('btnModeIsA');
+    if (btnIsA) {
+        btnIsA.addEventListener('click', () => setGraphMode('is_a'));
+    }
+
     // Thử lại khi lỗi
     const btnRetry = document.getElementById('btnRetryGraph');
     if (btnRetry) {
@@ -243,6 +454,13 @@ document.addEventListener('DOMContentLoaded', function () {
     document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') {
             closeGraphModal();
+        }
+    });
+
+    // Tự động căn vừa khung hình khi resize cửa sổ
+    window.addEventListener('resize', function () {
+        if (networkInstance) {
+            networkInstance.fit({ animation: false });
         }
     });
 });
