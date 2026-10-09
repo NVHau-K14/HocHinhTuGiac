@@ -1,7 +1,7 @@
 /**
  * XƯỞNG VẼ HÌNH HỌC TƯƠNG TÁC (LAB) - v2.4
- * Giai đoạn 3: Bảng vẽ tương tác SVG, kéo thả đỉnh chuột/chạm/bàn phím,
- * bắt lưới, ký hiệu tự động, số đo trực tiếp, kiểm tra lồi, undo/redo, chia sẻ URL.
+ * Giai đoạn 4: Chế độ hình mẫu với tay nắm chuyên biệt, nút mở khóa tự do,
+ * ô nhập số hai chiều, tab Công thức (KaTeX thay số & kiểm chứng chéo) và tab Nhận dạng.
  */
 
 (function () {
@@ -32,7 +32,7 @@
     const state = {
         meta: null,
         activePreset: 'hinh-chu-nhat',
-        mode: 'free', // Chế độ mặc định giai đoạn 3: kéo thả tự do
+        mode: 'param', // 'param' (theo hình mẫu) | 'free' (tự do)
         params: { a: 6, b: 4 },
         vertices: [
             { x: 0, y: 0 },
@@ -61,7 +61,8 @@
             startX: 0,
             startY: 0
         },
-        currentClassification: null
+        currentClassification: null,
+        debounceTimer: null
     };
 
     document.addEventListener('DOMContentLoaded', initLab);
@@ -93,7 +94,7 @@
 
         await loadLabMeta();
         renderScene();
-        updateMeasurementsPanel();
+        updateAllPanels();
     }
 
     /**
@@ -178,16 +179,15 @@
         });
 
         renderScene();
-        updateMeasurementsPanel();
+        updateAllPanels();
         syncUrl();
 
         const alertMsg = document.getElementById('labAlertMessage');
         if (alertMsg) {
-            alertMsg.textContent = `Đã chọn hình mẫu: ${p.name}. Có thể kéo đỉnh tự do để biến hình.`;
+            alertMsg.textContent = `Đã chọn hình mẫu: ${p.name}. Có thể kéo tay nắm hoặc nhập số để thay đổi.`;
         }
     }
 
-    // Chuyển đổi tọa độ toán học (cm) <-> SVG Canvas (px)
     function mathToSvg(x, y) {
         return {
             x: state.pan.x + x * 24 * state.zoom,
@@ -254,14 +254,11 @@
         if (diagsGroup) {
             diagsGroup.innerHTML = '';
             if (state.layers.diagonals) {
-                // Đường chéo AC
                 const dAC = createLine(svgA, svgC, '#7A8B99', '1.5', '4,4');
                 diagsGroup.appendChild(dAC);
-                // Đường chéo BD
                 const dBD = createLine(svgB, svgD, '#7A8B99', '1.5', '4,4');
                 diagsGroup.appendChild(dBD);
 
-                // Giao điểm O
                 const inter = Geometry.segmentsIntersection(A, C, B, D);
                 if (inter) {
                     const svgO = mathToSvg(inter.x, inter.y);
@@ -286,7 +283,7 @@
             }
         }
 
-        // 5. Lớp Ký hiệu hình học (song song, bằng nhau, góc vuông)
+        // 5. Lớp Ký hiệu hình học
         const marksGroup = document.getElementById('labMarksGroup');
         if (marksGroup) {
             marksGroup.innerHTML = '';
@@ -295,19 +292,29 @@
             }
         }
 
-        // 6. Lớp 4 đỉnh kéo thả A, B, C, D
+        // 6. Lớp 4 đỉnh kéo thả (xử lý tay nắm theo Mục 6.2)
         const verticesGroup = document.getElementById('labVerticesGroup');
         if (verticesGroup) {
             verticesGroup.innerHTML = '';
+            const preset = Presets?.getPreset(state.activePreset);
+            const handles = preset?.handles || ['A', 'B', 'C', 'D'];
+
             [svgA, svgB, svgC, svgD].forEach((svgP, idx) => {
                 const mathP = state.vertices[idx];
+                const vName = VERTEX_NAMES[idx];
+                const isHandle = state.mode === 'free' || handles.includes(vName);
+
                 const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-                g.setAttribute('class', 'lab-vertex');
+                g.setAttribute('class', `lab-vertex ${isHandle ? 'is-handle' : 'is-fixed'}`);
                 g.setAttribute('data-index', idx);
-                g.setAttribute('tabindex', '0');
+                g.setAttribute('tabindex', isHandle ? '0' : '-1');
                 g.setAttribute('role', 'slider');
-                g.setAttribute('aria-label', `Đỉnh ${VERTEX_NAMES[idx]}: (${mathP.x}; ${mathP.y})`);
-                g.style.cursor = 'grab';
+                g.setAttribute('aria-label', `Đỉnh ${vName}: (${mathP.x}; ${mathP.y})`);
+                g.style.cursor = isHandle ? 'grab' : 'not-allowed';
+                if (!isHandle) {
+                    g.style.opacity = '0.55';
+                    g.setAttribute('title', "Đỉnh này đi theo hình mẫu. Bấm 'Mở khóa để kéo tự do' để kéo.");
+                }
 
                 // Vùng bấm vô hình >= 44px
                 const hitCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
@@ -318,40 +325,38 @@
                 hitCircle.setAttribute('pointer-events', 'all');
                 g.appendChild(hitCircle);
 
-                // Chấm tròn đỉnh 6px
+                // Chấm tròn đỉnh (tay nắm có viền vàng dạ quang nổi bật)
                 const dotCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
                 dotCircle.setAttribute('cx', svgP.x);
                 dotCircle.setAttribute('cy', svgP.y);
-                dotCircle.setAttribute('r', '6');
-                dotCircle.setAttribute('fill', '#1F3A93');
-                dotCircle.setAttribute('stroke', '#FFFFFF');
+                dotCircle.setAttribute('r', isHandle ? '6.5' : '5');
+                dotCircle.setAttribute('fill', isHandle && state.mode === 'param' ? '#FFE66D' : '#1F3A93');
+                dotCircle.setAttribute('stroke', isHandle && state.mode === 'param' ? '#1F3A93' : '#FFFFFF');
                 dotCircle.setAttribute('stroke-width', '2');
                 g.appendChild(dotCircle);
 
                 // Nhãn chữ cái A, B, C, D
                 const offset = getLabelOffset(idx);
-                addSvgText(g, svgP.x + offset.x, svgP.y + offset.y, VERTEX_NAMES[idx], '#1F3A93', '15px', 'middle', 'bold');
+                addSvgText(g, svgP.x + offset.x, svgP.y + offset.y, vName, '#1F3A93', '15px', 'middle', 'bold');
 
                 // Nếu đang kéo đỉnh này: vẽ tooltip tọa độ
                 if (state.drag.active && state.drag.vertexIndex === idx) {
-                    renderCoordinateTooltip(g, svgP, mathP, VERTEX_NAMES[idx]);
+                    renderCoordinateTooltip(g, svgP, mathP, vName);
                 }
 
                 verticesGroup.appendChild(g);
             });
         }
 
-        // Cập nhật nhận dạng và thanh trạng thái
         updateClassification();
     }
 
     function getLabelOffset(idx) {
-        // Offset chữ nhãn để không đè lên hình
         switch (idx) {
-            case 0: return { x: -14, y: 14 }; // A (dưới-trái)
-            case 1: return { x: 14, y: 14 };  // B (dưới-phải)
-            case 2: return { x: 14, y: -12 }; // C (trên-phải)
-            case 3: return { x: -14, y: -12 };// D (trên-trái)
+            case 0: return { x: -14, y: 14 };
+            case 1: return { x: 14, y: 14 };
+            case 2: return { x: 14, y: -12 };
+            case 3: return { x: -14, y: -12 };
             default: return { x: 0, y: -12 };
         }
     }
@@ -383,7 +388,6 @@
             const midX = (svgP1.x + svgP2.x) / 2;
             const midY = (svgP1.y + svgP2.y) / 2;
 
-            // Offset vuông góc với cạnh
             const dx = svgP2.x - svgP1.x;
             const dy = svgP2.y - svgP1.y;
             const dist = Math.hypot(dx, dy) || 1;
@@ -422,7 +426,7 @@
         const [A, B, C, D] = mathPts;
         const [svgA, svgB, svgC, svgD] = svgPts;
 
-        // 1. Góc vuông (nếu có góc 90 độ +- 0.5)
+        // 1. Góc vuông
         const angles = [
             { idx: 0, val: Geometry.computeInteriorAngle(D, A, B), p: svgA, prev: svgD, next: svgB },
             { idx: 1, val: Geometry.computeInteriorAngle(A, B, C), p: svgB, prev: svgA, next: svgC },
@@ -436,7 +440,7 @@
             }
         });
 
-        // 2. Ký hiệu song song (mũi tên > trên AB, CD hoặc BC, DA)
+        // 2. Song song
         const vAB = Geometry.vector(A, B);
         const vCD = Geometry.vector(C, D);
         if (Geometry.areParallel(vAB, vCD)) {
@@ -506,7 +510,7 @@
     }
 
     /**
-     * Tương tác kéo thả chuột / chạm trên bảng vẽ SVG (Pointer Events)
+     * Tương tác kéo thả chuột / chạm trên bảng vẽ SVG
      */
     function bindCanvasInteraction() {
         const svg = document.getElementById('labSvgCanvas');
@@ -518,6 +522,16 @@
 
             const idx = parseInt(vertexGroup.getAttribute('data-index'), 10);
             if (isNaN(idx)) return;
+
+            const vName = VERTEX_NAMES[idx];
+            const preset = Presets?.getPreset(state.activePreset);
+            const isHandle = state.mode === 'free' || (preset?.handles && preset.handles.includes(vName));
+
+            if (!isHandle) {
+                const alertMsg = document.getElementById('labAlertMessage');
+                if (alertMsg) alertMsg.textContent = "Đỉnh này đi theo hình mẫu. Bấm 'Mở khóa để kéo tự do' để kéo.";
+                return;
+            }
 
             pushHistory();
             state.drag.active = true;
@@ -544,15 +558,27 @@
             const snappedX = applySnap(rawMath.x, state.snapStep);
             const snappedY = applySnap(rawMath.y, state.snapStep);
 
-            // Giới hạn |x|, |y| <= 50 cm
             const clampedX = Math.max(-50, Math.min(50, snappedX));
             const clampedY = Math.max(-50, Math.min(50, snappedY));
 
             const idx = state.drag.vertexIndex;
-            const oldVertices = [...state.vertices];
-            const testVertices = oldVertices.map((v, i) => i === idx ? { x: clampedX, y: clampedY } : { ...v });
+            const vName = VERTEX_NAMES[idx];
 
-            // Kiểm tra lồi theo thời gian thực (Mục 5.1)
+            let testVertices = null;
+            let newParams = null;
+
+            if (state.mode === 'param') {
+                const preset = Presets?.getPreset(state.activePreset);
+                if (preset && preset.mapHandleToParams) {
+                    newParams = preset.mapHandleToParams(vName, { x: clampedX, y: clampedY }, state.params);
+                    testVertices = preset.buildVertices(newParams);
+                }
+            } else {
+                testVertices = state.vertices.map((v, i) => i === idx ? { x: clampedX, y: clampedY } : { ...v });
+            }
+
+            if (!testVertices) return;
+
             const isValid = Geometry.isConvex(testVertices[0], testVertices[1], testVertices[2], testVertices[3]);
 
             const alertBanner = document.getElementById('labAlertBanner');
@@ -560,14 +586,16 @@
             const coordHint = document.getElementById('labCoordHint');
 
             if (isValid) {
-                state.vertices[idx] = { x: clampedX, y: clampedY };
+                if (state.mode === 'param' && newParams) {
+                    state.params = newParams;
+                }
+                state.vertices = testVertices;
                 if (alertBanner) alertBanner.classList.remove('warning');
-                if (alertMsg) alertMsg.textContent = `Đang kéo ${VERTEX_NAMES[idx]}(${Geometry.formatNumberVi(clampedX)}; ${Geometry.formatNumberVi(clampedY)})`;
+                if (alertMsg) alertMsg.textContent = `Đang kéo ${vName}(${Geometry.formatNumberVi(clampedX)}; ${Geometry.formatNumberVi(clampedY)})`;
                 if (coordHint) coordHint.textContent = `x = ${clampedX} cm, y = ${clampedY} cm`;
                 requestAnimationFrame(renderScene);
-                updateMeasurementsPanel();
+                updateAllPanels();
             } else {
-                // Giữ vị trí hợp lệ cuối cùng và phát cảnh báo (Mục 5.1)
                 if (alertBanner) alertBanner.classList.add('warning');
                 if (alertMsg) alertMsg.textContent = '⚠️ Hình sẽ bị lõm hoặc tự cắt. Hãy kéo đỉnh về phía khác.';
                 const canvasCard = document.querySelector('.lab-canvas-card');
@@ -596,7 +624,7 @@
             if (alertBanner) alertBanner.classList.remove('warning');
 
             requestAnimationFrame(renderScene);
-            updateMeasurementsPanel();
+            updateAllPanels();
             syncUrl();
         };
 
@@ -605,18 +633,15 @@
     }
 
     /**
-     * Bàn phím trợ năng (Accessibility Keyboard Navigation)
+     * Bàn phím trợ năng
      */
     function bindKeyboardShortcuts() {
-        // Tab chọn đỉnh, phím mũi tên di chuyển
         document.addEventListener('keydown', (e) => {
-            // Undo: Ctrl+Z
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
                 e.preventDefault();
                 undo();
                 return;
             }
-            // Redo: Ctrl+Y hoặc Ctrl+Shift+Z
             if (((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') ||
                 ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z')) {
                 e.preventDefault();
@@ -624,11 +649,15 @@
                 return;
             }
 
-            // Phím mũi tên khi đang focus vào 1 đỉnh
             const activeElem = document.activeElement;
             if (activeElem && activeElem.classList.contains('lab-vertex')) {
                 const idx = parseInt(activeElem.getAttribute('data-index'), 10);
                 if (isNaN(idx)) return;
+
+                const vName = VERTEX_NAMES[idx];
+                const preset = Presets?.getPreset(state.activePreset);
+                const isHandle = state.mode === 'free' || (preset?.handles && preset.handles.includes(vName));
+                if (!isHandle) return;
 
                 let dx = 0, dy = 0;
                 const step = state.snapStep === 0 ? 0.2 : (e.shiftKey ? state.snapStep * 5 : state.snapStep);
@@ -647,23 +676,29 @@
                 const newX = Math.round((cur.x + dx) * 100) / 100;
                 const newY = Math.round((cur.y + dy) * 100) / 100;
 
-                const testVertices = state.vertices.map((v, i) => i === idx ? { x: newX, y: newY } : { ...v });
-                if (Geometry.isConvex(...testVertices)) {
-                    state.vertices[idx] = { x: newX, y: newY };
-                    renderScene();
-                    updateMeasurementsPanel();
-                    syncUrl();
+                let testVertices = null;
+                let newParams = null;
+
+                if (state.mode === 'param') {
+                    if (preset && preset.mapHandleToParams) {
+                        newParams = preset.mapHandleToParams(vName, { x: newX, y: newY }, state.params);
+                        testVertices = preset.buildVertices(newParams);
+                    }
                 } else {
-                    const alertMsg = document.getElementById('labAlertMessage');
-                    if (alertMsg) alertMsg.textContent = '⚠️ Vị trí phím di chuyển làm hình bị lõm hoặc tự cắt.';
+                    testVertices = state.vertices.map((v, i) => i === idx ? { x: newX, y: newY } : { ...v });
+                }
+
+                if (testVertices && Geometry.isConvex(...testVertices)) {
+                    if (state.mode === 'param' && newParams) state.params = newParams;
+                    state.vertices = testVertices;
+                    renderScene();
+                    updateAllPanels();
+                    syncUrl();
                 }
             }
         });
     }
 
-    /**
-     * Quản lý Undo / Redo
-     */
     function pushHistory() {
         state.history.undo.push({
             vertices: JSON.parse(JSON.stringify(state.vertices)),
@@ -691,8 +726,9 @@
         state.params = snap.params;
 
         updateHistoryButtons();
+        syncControlsWithState();
         renderScene();
-        updateMeasurementsPanel();
+        updateAllPanels();
         syncUrl();
     }
 
@@ -711,8 +747,9 @@
         state.params = snap.params;
 
         updateHistoryButtons();
+        syncControlsWithState();
         renderScene();
-        updateMeasurementsPanel();
+        updateAllPanels();
         syncUrl();
     }
 
@@ -723,9 +760,6 @@
         if (btnRedo) btnRedo.disabled = state.history.redo.length === 0;
     }
 
-    /**
-     * Cập nhật thông tin nhận dạng & thanh trạng thái
-     */
     function updateClassification() {
         if (!Classify) return;
         const [A, B, C, D] = state.vertices;
@@ -737,7 +771,6 @@
             statusText.textContent = res.statusText;
         }
 
-        // Kiểm tra thông báo thêm/mất điều kiện khi loại hình thay đổi (Mục 6.4)
         if (state.currentClassification && state.currentClassification.mostSpecific !== res.mostSpecific) {
             const diff = Classify.getConditionDiff(state.currentClassification.mostSpecific, res.mostSpecific, isaData);
             if (diff && !state.drag.active) {
@@ -752,8 +785,14 @@
         state.currentClassification = res;
     }
 
+    function updateAllPanels() {
+        updateMeasurementsPanel();
+        updateFormulasPanel();
+        updateClassifyPanel();
+    }
+
     /**
-     * Cập nhật panel tab "Số đo" trực tiếp
+     * Cập nhật panel tab "Số đo" và ô nhập số hai chiều (Mục 7.2)
      */
     function updateMeasurementsPanel() {
         const container = document.getElementById('labMeasurementsContent');
@@ -761,6 +800,51 @@
 
         const [A, B, C, D] = state.vertices;
         const m = Geometry.computeMeasurements(A, B, C, D);
+
+        let inputsHtml = '';
+        if (state.mode === 'param') {
+            inputsHtml = `
+                <div class="lab-inputs-container">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="fw-bold" style="font-size: 0.95rem; color: var(--color-ink);">✎ Nhập tham số hình mẫu</span>
+                        <button type="button" class="lab-unlock-btn" id="labBtnUnlockFree" title="Chuyển sang kéo thả 4 đỉnh độc lập">
+                            🔓 Mở khóa kéo tự do
+                        </button>
+                    </div>
+                    <div class="lab-input-grid">
+                        ${Object.keys(state.params).map(k => `
+                            <div class="lab-input-item">
+                                <label for="paramInput_${k}">${getParamLabel(k)}</label>
+                                <input type="text" inputmode="decimal" class="lab-number-input" id="paramInput_${k}" data-param="${k}" value="${state.params[k]}" />
+                                <div class="lab-input-error-msg" id="paramErr_${k}"></div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        } else {
+            inputsHtml = `
+                <div class="lab-inputs-container">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="fw-bold" style="font-size: 0.95rem; color: var(--color-ink);">✎ Nhập tọa độ đỉnh (cm)</span>
+                        <button type="button" class="lab-unlock-btn" id="labBtnLockPreset" title="Khóa về tham số hình mẫu">
+                            🔒 Khóa về hình mẫu
+                        </button>
+                    </div>
+                    <div class="lab-input-grid">
+                        ${state.vertices.map((v, i) => `
+                            <div class="lab-input-item">
+                                <label>${VERTEX_NAMES[i]}(x; y)</label>
+                                <div class="d-flex gap-1">
+                                    <input type="text" inputmode="decimal" class="lab-number-input" data-vertex="${i}" data-coord="x" value="${v.x}" title="Tọa độ x" />
+                                    <input type="text" inputmode="decimal" class="lab-number-input" data-vertex="${i}" data-coord="y" value="${v.y}" title="Tọa độ y" />
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
 
         container.innerHTML = `
             <div style="font-size: 0.95rem;">
@@ -783,19 +867,311 @@
                     <div>∠C: <strong>${Geometry.formatNumberVi(m.angles.C)}°</strong></div>
                     <div>∠D: <strong>${Geometry.formatNumberVi(m.angles.D)}°</strong></div>
                 </div>
-                <div class="small text-muted mb-3">Tổng 4 góc: <strong>${Geometry.formatNumberVi(m.angles.sum)}°</strong></div>
+                <div class="small text-muted mb-2">Tổng 4 góc: <strong>${Geometry.formatNumberVi(m.angles.sum)}°</strong></div>
 
+                <div style="background: #F4F8FD; border-left: 3px solid var(--color-ink); padding: 8px 10px; border-radius: 2px; margin-bottom: 10px;">
+                    <div>Đường chéo AC: <strong>${Geometry.formatNumberVi(m.diagonals.AC)} cm</strong>, BD: <strong>${Geometry.formatNumberVi(m.diagonals.BD)} cm</strong></div>
+                    <div>Chu vi (P): <strong style="color: var(--color-ink);">${Geometry.formatNumberVi(m.perimeter)} cm</strong></div>
+                    <div>Diện tích (S): <strong style="color: var(--color-margin); font-size: 1.05rem;">${Geometry.formatNumberVi(m.area)} cm²</strong></div>
+                </div>
+
+                ${inputsHtml}
+            </div>
+        `;
+
+        bindInputEvents();
+    }
+
+    function getParamLabel(key) {
+        const labels = {
+            a: 'Cạnh a (cm)',
+            b: 'Cạnh b (cm)',
+            h: 'Chiều cao h (cm)',
+            s: 'Độ lệch s (cm)',
+            dx: 'Độ dời dx (cm)',
+            dy: 'Độ dời dy (cm)',
+            d1: 'Đường chéo AC (cm)',
+            d2: 'Đường chéo BD (cm)',
+            p: 'Đoạn AO (cm)'
+        };
+        return labels[key] || `Tham số ${key}`;
+    }
+
+    function bindInputEvents() {
+        const btnUnlock = document.getElementById('labBtnUnlockFree');
+        if (btnUnlock) {
+            btnUnlock.addEventListener('click', () => {
+                state.mode = 'free';
+                syncControlsWithState();
+                renderScene();
+                updateAllPanels();
+                syncUrl();
+            });
+        }
+
+        const btnLock = document.getElementById('labBtnLockPreset');
+        if (btnLock) {
+            btnLock.addEventListener('click', () => {
+                state.mode = 'param';
+                if (state.currentClassification?.mostSpecific) {
+                    state.activePreset = state.currentClassification.mostSpecific;
+                }
+                syncControlsWithState();
+                renderScene();
+                updateAllPanels();
+                syncUrl();
+            });
+        }
+
+        // Ô nhập tham số hình mẫu (param mode)
+        document.querySelectorAll('input[data-param]').forEach(input => {
+            input.addEventListener('change', handleParamInputChange);
+            input.addEventListener('keyup', (e) => {
+                if (e.key === 'Enter') handleParamInputChange(e);
+            });
+        });
+
+        // Ô nhập tọa độ (free mode)
+        document.querySelectorAll('input[data-vertex]').forEach(input => {
+            input.addEventListener('change', handleVertexInputChange);
+            input.addEventListener('keyup', (e) => {
+                if (e.key === 'Enter') handleVertexInputChange(e);
+            });
+        });
+    }
+
+    function handleParamInputChange(e) {
+        const paramKey = e.target.getAttribute('data-param');
+        const rawVal = e.target.value.replace(',', '.');
+        const numVal = parseFloat(rawVal);
+        const errElem = document.getElementById(`paramErr_${paramKey}`);
+
+        if (isNaN(numVal) || numVal < 0.5 || numVal > 50) {
+            e.target.classList.add('invalid');
+            if (errElem) errElem.textContent = 'Giá trị từ 0.5 đến 50 cm';
+            return;
+        }
+
+        const preset = Presets?.getPreset(state.activePreset);
+        if (!preset) return;
+
+        const newParams = { ...state.params, [paramKey]: numVal };
+        const testVertices = preset.buildVertices(newParams);
+
+        if (!Geometry.isConvex(...testVertices)) {
+            e.target.classList.add('invalid');
+            if (errElem) errElem.textContent = 'Hình sẽ bị lõm';
+            return;
+        }
+
+        pushHistory();
+        e.target.classList.remove('invalid');
+        if (errElem) errElem.textContent = '';
+        state.params = newParams;
+        state.vertices = testVertices;
+        renderScene();
+        updateAllPanels();
+        syncUrl();
+    }
+
+    function handleVertexInputChange(e) {
+        const vIdx = parseInt(e.target.getAttribute('data-vertex'), 10);
+        const coord = e.target.getAttribute('data-coord');
+        const rawVal = e.target.value.replace(',', '.');
+        const numVal = parseFloat(rawVal);
+
+        if (isNaN(numVal) || Math.abs(numVal) > 50) {
+            e.target.classList.add('invalid');
+            return;
+        }
+
+        const newVertices = state.vertices.map((v, i) => {
+            if (i === vIdx) {
+                return { ...v, [coord]: numVal };
+            }
+            return { ...v };
+        });
+
+        if (!Geometry.isConvex(...newVertices)) {
+            e.target.classList.add('invalid');
+            return;
+        }
+
+        pushHistory();
+        e.target.classList.remove('invalid');
+        state.vertices = newVertices;
+        renderScene();
+        updateAllPanels();
+        syncUrl();
+    }
+
+    /**
+     * Cập nhật panel tab "Công thức" với KaTeX thay số & kiểm chứng chéo (Mục 6.5)
+     */
+    function updateFormulasPanel() {
+        const container = document.getElementById('labFormulasContent');
+        if (!container || !Formulas) return;
+
+        const allFormulas = state.meta?.formulas || [];
+        const specificSlug = state.currentClassification?.mostSpecific || 'tu-giac';
+        const ancestors = state.currentClassification?.ancestors || [];
+
+        const directFormulas = allFormulas.filter(f => f.slug === specificSlug);
+        const inheritedFormulas = allFormulas.filter(f => ancestors.includes(f.slug));
+
+        // Khử trùng theo Formula.id
+        const seenIds = new Set();
+        const uniqueDirect = directFormulas.filter(f => {
+            if (seenIds.has(f.id)) return false;
+            seenIds.add(f.id);
+            return true;
+        });
+        const uniqueInherited = inheritedFormulas.filter(f => {
+            if (seenIds.has(f.id)) return false;
+            seenIds.add(f.id);
+            return true;
+        });
+
+        const [A, B, C, D] = state.vertices;
+
+        function renderFormulaItem(f) {
+            const computed = Formulas.computeFormula(f.id, A, B, C, D);
+            let mathHtml = '';
+            let checkBadgeHtml = '';
+
+            if (computed) {
+                const filledLatex = computed.latexFilled;
+                mathHtml = window.katex ? window.katex.renderToString(filledLatex, { throwOnError: false }) : filledLatex;
+
+                if (computed.isArea) {
+                    if (computed.isMatchShoelace) {
+                        checkBadgeHtml = `<span class="lab-formula-check-badge match">✓ Khớp diện tích tọa độ (${Geometry.formatNumberVi(computed.shoelaceArea)} cm²)</span>`;
+                    } else {
+                        checkBadgeHtml = `<span class="lab-formula-check-badge mismatch">✗ Lệch diện tích tọa độ</span>`;
+                    }
+                }
+            } else {
+                const origLatex = f.expression;
+                mathHtml = window.katex ? window.katex.renderToString(origLatex, { throwOnError: false }) : origLatex;
+                checkBadgeHtml = `<span class="small text-muted">Chưa có bộ tính thay số</span>`;
+            }
+
+            return `
+                <div class="lab-formula-card">
+                    <div class="lab-formula-title">
+                        <span>${f.name}</span>
+                        ${checkBadgeHtml}
+                    </div>
+                    <div class="lab-formula-math">${mathHtml}</div>
+                    ${f.note ? `<div class="small text-muted">✎ ${f.note}</div>` : ''}
+                </div>
+            `;
+        }
+
+        container.innerHTML = `
+            <div>
                 <h5 style="font-size: 1.15rem; color: var(--color-ink); margin-bottom: 8px;">
-                    ✂ Đường chéo & Chu vi, Diện tích
+                    ∑ Công thức trực tiếp (${Classify?.SHAPE_NAMES[specificSlug] || specificSlug})
                 </h5>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px;">
-                    <div>AC: <strong>${Geometry.formatNumberVi(m.diagonals.AC)} cm</strong></div>
-                    <div>BD: <strong>${Geometry.formatNumberVi(m.diagonals.BD)} cm</strong></div>
+                ${uniqueDirect.length > 0 ? uniqueDirect.map(renderFormulaItem).join('') : '<p class="text-muted small">Không có công thức riêng cho hình này.</p>'}
+
+                ${uniqueInherited.length > 0 ? `
+                    <details class="mt-3" open>
+                        <summary style="font-size: 1.1rem; color: var(--color-ink); cursor: pointer; font-weight: 600; margin-bottom: 8px;">
+                            🌿 Công thức kế thừa từ hình cha (${uniqueInherited.length} công thức)
+                        </summary>
+                        <div class="mt-2">
+                            ${uniqueInherited.map(renderFormulaItem).join('')}
+                        </div>
+                    </details>
+                ` : ''}
+            </div>
+        `;
+    }
+
+    /**
+     * Cập nhật panel tab "Nhận dạng" và checklist tính chất đúng/sai (Mục 6.3, 7.4)
+     */
+    function updateClassifyPanel() {
+        const container = document.getElementById('labClassifyContent');
+        if (!container || !Geometry || !Classify) return;
+
+        const [A, B, C, D] = state.vertices;
+        const curName = Classify.SHAPE_NAMES[state.currentClassification?.mostSpecific] || 'Tứ giác';
+        const ancestors = state.currentClassification?.ancestors || [];
+        const ancStr = ancestors.length > 0 ? ancestors.map(a => (Classify.SHAPE_NAMES[a] || a).toLowerCase()).join(', ') : '';
+
+        // Tính toán các tính chất đúng/sai theo số đo thật
+        const vAB = Geometry.vector(A, B);
+        const vBC = Geometry.vector(B, C);
+        const vCD = Geometry.vector(C, D);
+        const vDA = Geometry.vector(D, A);
+
+        const pAB_CD = Geometry.areParallel(vAB, vCD);
+        const pBC_DA = Geometry.areParallel(vBC, vDA);
+        const has1Parallel = pAB_CD || pBC_DA;
+        const has2Parallel = pAB_CD && pBC_DA;
+
+        const angA = Geometry.computeInteriorAngle(D, A, B);
+        const angB = Geometry.computeInteriorAngle(A, B, C);
+        const angC = Geometry.computeInteriorAngle(B, C, D);
+        const angD = Geometry.computeInteriorAngle(C, D, A);
+        const hasRightAngle = Math.abs(angA - 90) <= Geometry.TOL_ANGLE ||
+                              Math.abs(angB - 90) <= Geometry.TOL_ANGLE ||
+                              Math.abs(angC - 90) <= Geometry.TOL_ANGLE ||
+                              Math.abs(angD - 90) <= Geometry.TOL_ANGLE;
+        const allRightAngles = Math.abs(angA - 90) <= Geometry.TOL_ANGLE &&
+                               Math.abs(angB - 90) <= Geometry.TOL_ANGLE &&
+                               Math.abs(angC - 90) <= Geometry.TOL_ANGLE &&
+                               Math.abs(angD - 90) <= Geometry.TOL_ANGLE;
+
+        const dAB = Geometry.vectorLength(vAB);
+        const dBC = Geometry.vectorLength(vBC);
+        const dCD = Geometry.vectorLength(vCD);
+        const dDA = Geometry.vectorLength(vDA);
+        const fourSidesEqual = Geometry.approxEqual(dAB, dBC) && Geometry.approxEqual(dBC, dCD) && Geometry.approxEqual(dCD, dDA);
+
+        const dAC = Geometry.distance(A, C);
+        const dBD = Geometry.distance(B, D);
+        const equalDiags = Geometry.approxEqual(dAC, dBD);
+        const perpDiags = Geometry.arePerpendicular(Geometry.vector(A, C), Geometry.vector(B, D));
+
+        container.innerHTML = `
+            <div>
+                <div class="lab-identity-banner">
+                    <div class="lab-identity-name">${curName}</div>
+                    ${ancStr ? `<p class="lab-ancestor-chain">Cũng là: <strong>${ancStr}</strong></p>` : ''}
                 </div>
-                <div style="background: #F4F8FD; border-left: 3px solid var(--color-ink); padding: 8px; border-radius: 2px;">
-                    <div>Chu vi (P): <strong style="font-size: 1.1rem; color: var(--color-ink);">${Geometry.formatNumberVi(m.perimeter)} cm</strong></div>
-                    <div>Diện tích (S): <strong style="font-size: 1.1rem; color: var(--color-margin);">${Geometry.formatNumberVi(m.area)} cm²</strong></div>
-                </div>
+
+                <h5 style="font-size: 1.15rem; color: var(--color-ink); margin-bottom: 6px;">
+                    ✓/✗ Kiểm tra tính chất hình học hiện tại
+                </h5>
+                <ul class="lab-property-checklist">
+                    <li class="lab-property-item">
+                        <span class="lab-prop-icon ${has1Parallel ? 'true' : 'false'}">${has1Parallel ? '✓' : '✗'}</span>
+                        <span>Có ít nhất một cặp cạnh đối song song</span>
+                    </li>
+                    <li class="lab-property-item">
+                        <span class="lab-prop-icon ${has2Parallel ? 'true' : 'false'}">${has2Parallel ? '✓' : '✗'}</span>
+                        <span>Cả hai cặp cạnh đối song song</span>
+                    </li>
+                    <li class="lab-property-item">
+                        <span class="lab-prop-icon ${allRightAngles ? 'true' : 'false'}">${allRightAngles ? '✓' : '✗'}</span>
+                        <span>Có 4 góc vuông (90°)</span>
+                    </li>
+                    <li class="lab-property-item">
+                        <span class="lab-prop-icon ${fourSidesEqual ? 'true' : 'false'}">${fourSidesEqual ? '✓' : '✗'}</span>
+                        <span>Bốn cạnh bằng nhau</span>
+                    </li>
+                    <li class="lab-property-item">
+                        <span class="lab-prop-icon ${equalDiags ? 'true' : 'false'}">${equalDiags ? '✓' : '✗'}</span>
+                        <span>Hai đường chéo bằng nhau (AC = BD)</span>
+                    </li>
+                    <li class="lab-property-item">
+                        <span class="lab-prop-icon ${perpDiags ? 'true' : 'false'}">${perpDiags ? '✓' : '✗'}</span>
+                        <span>Hai đường chéo vuông góc với nhau (AC ⊥ BD)</span>
+                    </li>
+                </ul>
             </div>
         `;
     }
@@ -829,12 +1205,16 @@
                 state.mode = 'param';
                 modePresetBtn.classList.add('active');
                 modeFreeBtn.classList.remove('active');
+                renderScene();
+                updateAllPanels();
                 syncUrl();
             });
             modeFreeBtn.addEventListener('click', () => {
                 state.mode = 'free';
                 modeFreeBtn.classList.add('active');
                 modePresetBtn.classList.remove('active');
+                renderScene();
+                updateAllPanels();
                 syncUrl();
             });
         }
@@ -929,6 +1309,10 @@
                 });
                 const activePane = document.getElementById(targetTab);
                 if (activePane) activePane.classList.add('active');
+
+                // Render lại công thức/nhận dạng khi mở tab
+                if (targetTab === 'tabFormulas') updateFormulasPanel();
+                if (targetTab === 'tabClassify') updateClassifyPanel();
             });
         });
     }

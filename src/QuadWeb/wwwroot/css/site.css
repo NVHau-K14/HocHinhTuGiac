@@ -1320,3 +1320,190 @@ p, li {
   color: var(--color-margin);
   margin-bottom: 8px;
 }
+
+/* ==========================================================================
+   GIAI ĐOẠN 4: Ô NHẬP SỐ, THẺ CÔNG THỨC & PANEL NHẬN DẠNG
+   ========================================================================== */
+
+/* Ô nhập số hai chiều */
+.lab-inputs-container {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1.5px dashed var(--color-grid);
+}
+
+.lab-input-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.lab-input-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.lab-input-item label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-ink);
+  margin-bottom: 0;
+}
+
+.lab-number-input {
+  width: 100%;
+  padding: 5px 8px;
+  font-size: 0.95rem;
+  font-family: 'Be Vietnam Pro', monospace, sans-serif;
+  color: var(--color-pencil);
+  background: #FFFDF8;
+  border: 1.5px solid var(--color-grid);
+  border-radius: 4px;
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.lab-number-input:focus {
+  border-color: var(--color-ink);
+  background: #FFFFFF;
+  box-shadow: 0 0 0 2px rgba(31, 58, 147, 0.15);
+}
+
+.lab-number-input.invalid {
+  border-color: var(--color-margin);
+  background: #FFF5F5;
+  color: var(--color-margin);
+}
+
+.lab-input-error-msg {
+  font-size: 0.75rem;
+  color: var(--color-margin);
+  margin-top: 2px;
+  line-height: 1.2;
+}
+
+/* Thẻ công thức toán học */
+.lab-formula-card {
+  background: #FFFFFF;
+  border: 1.5px solid var(--color-grid);
+  border-radius: 4px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  box-shadow: 1px 2px 0px rgba(0, 0, 0, 0.04);
+}
+
+.lab-formula-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-ink);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.lab-formula-math {
+  font-size: 1.05rem;
+  overflow-x: auto;
+  padding: 4px 0;
+  margin-bottom: 6px;
+}
+
+.lab-formula-check-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.lab-formula-check-badge.match {
+  background: #E8F5E9;
+  color: #2E7D32;
+  border: 1px solid #C8E6C9;
+}
+
+.lab-formula-check-badge.mismatch {
+  background: #FFEBEE;
+  color: #C62828;
+  border: 1px solid #FFCDD2;
+}
+
+/* Panel Nhận dạng hình học */
+.lab-identity-banner {
+  background: #F4F8FD;
+  border: 1.5px solid var(--color-ink);
+  border-radius: 4px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+}
+
+.lab-identity-name {
+  font-family: 'Patrick Hand', cursive, sans-serif;
+  font-size: 1.6rem;
+  color: var(--color-ink);
+  margin-bottom: 2px;
+}
+
+.lab-ancestor-chain {
+  font-size: 0.9rem;
+  color: var(--color-pencil);
+  margin-bottom: 0;
+}
+
+.lab-property-checklist {
+  list-style: none;
+  padding-left: 0;
+  margin-top: 8px;
+}
+
+.lab-property-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.9rem;
+  padding: 5px 0;
+  border-bottom: 1px dotted var(--color-grid);
+}
+
+.lab-property-item:last-child {
+  border-bottom: none;
+}
+
+.lab-prop-icon {
+  font-weight: bold;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.lab-prop-icon.true {
+  color: #2E7D32;
+}
+
+.lab-prop-icon.false {
+  color: #C62828;
+}
+
+/* Nút chuyển đổi chế độ hình mẫu / tự do */
+.lab-unlock-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85rem;
+  padding: 3px 8px;
+  background: #FFFDF8;
+  border: 1px solid var(--color-ink);
+  border-radius: 3px;
+  color: var(--color-ink);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.lab-unlock-btn:hover {
+  background: var(--color-ink);
+  color: #FFFFFF;
+}
