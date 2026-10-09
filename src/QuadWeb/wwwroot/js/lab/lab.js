@@ -1,12 +1,20 @@
 /**
  * XƯỞNG VẼ HÌNH HỌC TƯƠNG TÁC (LAB) - v2.4
- * Giai đoạn 1: Khung trang, khởi tạo bảng vẽ SVG, kết nối /api/lab/meta và xử lý lỗi Neo4j.
+ * Giai đoạn 3: Bảng vẽ tương tác SVG, kéo thả đỉnh chuột/chạm/bàn phím,
+ * bắt lưới, ký hiệu tự động, số đo trực tiếp, kiểm tra lồi, undo/redo, chia sẻ URL.
  */
 
 (function () {
     'use strict';
 
-    // SVG icon mini cho 8 hình mẫu cơ bản
+    // Import các module lõi từ QuadLab namespace
+    const Geometry = window.QuadLab?.Geometry;
+    const Presets = window.QuadLab?.Presets;
+    const Classify = window.QuadLab?.Classify;
+    const Formulas = window.QuadLab?.Formulas;
+    const Transform = window.QuadLab?.Transform;
+    const UrlSync = window.QuadLab?.UrlSync;
+
     const PRESET_ICONS = {
         'tu-giac': '<svg viewBox="0 0 100 70"><path d="M15 15 L85 10 L80 60 L20 55 Z" fill="none" stroke="#1F3A93" stroke-width="3"/></svg>',
         'hinh-thang': '<svg viewBox="0 0 100 70"><path d="M25 15 L75 15 L90 55 L10 55 Z" fill="none" stroke="#1F3A93" stroke-width="3"/></svg>',
@@ -18,11 +26,20 @@
         'hinh-dieu': '<svg viewBox="0 0 100 70"><path d="M50 10 L80 30 L50 62 L20 30 Z" fill="none" stroke="#1F3A93" stroke-width="3"/></svg>'
     };
 
+    const VERTEX_NAMES = ['A', 'B', 'C', 'D'];
+
     // State ứng dụng
     const state = {
         meta: null,
         activePreset: 'hinh-chu-nhat',
-        mode: 'param', // 'param' | 'free'
+        mode: 'free', // Chế độ mặc định giai đoạn 3: kéo thả tự do
+        params: { a: 6, b: 4 },
+        vertices: [
+            { x: 0, y: 0 },
+            { x: 6, y: 0 },
+            { x: 6, y: 4 },
+            { x: 0, y: 4 }
+        ],
         snap: true,
         snapStep: 1, // 1 | 0.5 | 0
         layers: {
@@ -32,51 +49,77 @@
             marks: true
         },
         zoom: 1,
-        pan: { x: 80, y: 380 } // Gốc tọa độ ban đầu (dưới-trái)
+        pan: { x: 120, y: 380 }, // Gốc tọa độ dưới-trái
+        history: {
+            undo: [],
+            redo: []
+        },
+        drag: {
+            active: false,
+            vertexIndex: -1,
+            pointerId: null,
+            startX: 0,
+            startY: 0
+        },
+        currentClassification: null
     };
 
-    // Khởi tạo ứng dụng khi DOM sẵn sàng
     document.addEventListener('DOMContentLoaded', initLab);
 
     async function initLab() {
         bindToolbarEvents();
         bindSidebarTabs();
         initSvgAxes();
+        bindCanvasInteraction();
+        bindKeyboardShortcuts();
+
+        // Khôi phục URL nếu có query string
+        if (window.location.search && UrlSync) {
+            const parsed = UrlSync.parseUrlToState(window.location.search);
+            if (parsed.isValid) {
+                state.mode = parsed.mode;
+                state.snap = parsed.snap;
+                state.snapStep = parsed.snapStep;
+                if (parsed.mode === 'free') {
+                    state.vertices = parsed.vertices;
+                } else {
+                    state.activePreset = parsed.activePreset;
+                    state.params = parsed.params;
+                    state.vertices = parsed.vertices;
+                }
+                syncControlsWithState();
+            }
+        }
+
         await loadLabMeta();
+        renderScene();
+        updateMeasurementsPanel();
     }
 
     /**
-     * Tải siêu dữ liệu hình học từ Neo4j qua /api/lab/meta
+     * Tải siêu dữ liệu hình học từ Neo4j
      */
     async function loadLabMeta() {
         const loadingText = document.getElementById('labPresetLoadingText');
         const scrollContainer = document.getElementById('labPresetScroll');
         const errorContainer = document.getElementById('labPresetErrorContainer');
-        const statusText = document.getElementById('labStatusText');
 
         if (loadingText) loadingText.style.display = 'inline';
         if (errorContainer) errorContainer.style.display = 'none';
 
         try {
             const res = await fetch('/api/lab/meta');
-            if (!res.ok) {
-                throw new Error(`HTTP ${res.status}: Máy chủ không thể nạp siêu dữ liệu`);
-            }
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
             state.meta = data;
 
             if (loadingText) loadingText.style.display = 'none';
             renderPresetButtons(data.shapes || []);
-
-            if (statusText) {
-                statusText.textContent = 'Hình chữ nhật (cũng là hình bình hành, hình thang cân, hình thang, tứ giác)';
-            }
         } catch (err) {
             console.error('Lỗi nạp /api/lab/meta:', err);
             if (loadingText) loadingText.style.display = 'none';
             if (scrollContainer) scrollContainer.innerHTML = '';
             
-            // Xử lý lỗi thân thiện theo Mục 3 và Mục 0 của tài liệu
             if (errorContainer) {
                 errorContainer.style.display = 'block';
                 errorContainer.innerHTML = `
@@ -87,20 +130,11 @@
                     </div>
                 `;
                 const btnRetry = document.getElementById('labBtnRetry');
-                if (btnRetry) {
-                    btnRetry.addEventListener('click', loadLabMeta);
-                }
-            }
-
-            if (statusText) {
-                statusText.textContent = 'Bảng vẽ hoạt động ở chế độ độc lập (Chưa tải được dữ liệu Neo4j)';
+                if (btnRetry) btnRetry.addEventListener('click', loadLabMeta);
             }
         }
     }
 
-    /**
-     * Hiển thị danh sách nút chọn hình mẫu
-     */
     function renderPresetButtons(shapes) {
         const container = document.getElementById('labPresetScroll');
         if (!container) return;
@@ -122,37 +156,672 @@
             `;
 
             btn.addEventListener('click', () => {
-                selectPreset(s.slug);
+                applyPreset(s.slug);
             });
 
             container.appendChild(btn);
         });
     }
 
-    /**
-     * Chọn một hình mẫu
-     */
-    function selectPreset(slug) {
+    function applyPreset(slug) {
+        if (!Presets) return;
+        pushHistory();
         state.activePreset = slug;
+        const p = Presets.getPreset(slug);
+        state.params = { ...p.params };
+        state.vertices = p.buildVertices ? p.buildVertices(p.params) : [...p.defaultVertices];
+
         document.querySelectorAll('.lab-preset-btn').forEach(btn => {
             const isMatch = btn.getAttribute('data-slug') === slug;
             btn.classList.toggle('active', isMatch);
             btn.setAttribute('aria-selected', isMatch ? 'true' : 'false');
         });
 
+        renderScene();
+        updateMeasurementsPanel();
+        syncUrl();
+
         const alertMsg = document.getElementById('labAlertMessage');
         if (alertMsg) {
-            const shapeObj = state.meta?.shapes?.find(s => s.slug === slug);
-            const shapeName = shapeObj ? shapeObj.name : slug;
-            alertMsg.textContent = `Đã chọn hình mẫu: ${shapeName}. Có thể kéo đỉnh để thay đổi kích thước.`;
+            alertMsg.textContent = `Đã chọn hình mẫu: ${p.name}. Có thể kéo đỉnh tự do để biến hình.`;
         }
     }
 
+    // Chuyển đổi tọa độ toán học (cm) <-> SVG Canvas (px)
+    function mathToSvg(x, y) {
+        return {
+            x: state.pan.x + x * 24 * state.zoom,
+            y: state.pan.y - y * 24 * state.zoom
+        };
+    }
+
+    function svgToMath(px, py) {
+        return {
+            x: (px - state.pan.x) / (24 * state.zoom),
+            y: (state.pan.y - py) / (24 * state.zoom)
+        };
+    }
+
+    function applySnap(val, step) {
+        if (!state.snap || step === 0) {
+            return Math.round(val * 100) / 100;
+        }
+        if (step === 1) {
+            return Math.round(val);
+        }
+        if (step === 0.5) {
+            return Math.round(val * 2) / 2;
+        }
+        return val;
+    }
+
     /**
-     * Gắn sự kiện thanh công cụ
+     * Vẽ toàn bộ hình học và các lớp lên SVG
      */
+    function renderScene() {
+        if (!Geometry) return;
+        const [A, B, C, D] = state.vertices;
+        const svgA = mathToSvg(A.x, A.y);
+        const svgB = mathToSvg(B.x, B.y);
+        const svgC = mathToSvg(C.x, C.y);
+        const svgD = mathToSvg(D.x, D.y);
+
+        // 1. Polygon diện tích
+        const polyFill = document.getElementById('labPolyFill');
+        if (polyFill) {
+            polyFill.setAttribute('points', `${svgA.x},${svgA.y} ${svgB.x},${svgB.y} ${svgC.x},${svgC.y} ${svgD.x},${svgD.y}`);
+        }
+
+        // 2. Lớp Cạnh
+        const edgesGroup = document.getElementById('labEdgesGroup');
+        if (edgesGroup) {
+            edgesGroup.innerHTML = '';
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', `M ${svgA.x} ${svgA.y} L ${svgB.x} ${svgB.y} L ${svgC.x} ${svgC.y} L ${svgD.x} ${svgD.y} Z`);
+            path.setAttribute('fill', 'none');
+            path.setAttribute('stroke', '#1F3A93');
+            path.setAttribute('stroke-width', '2.5');
+            path.setAttribute('stroke-linejoin', 'round');
+            edgesGroup.appendChild(path);
+
+            if (state.layers.sides) {
+                renderSideMeasurements(edgesGroup, [A, B, C, D], [svgA, svgB, svgC, svgD]);
+            }
+        }
+
+        // 3. Lớp Đường chéo
+        const diagsGroup = document.getElementById('labDiagonalsGroup');
+        if (diagsGroup) {
+            diagsGroup.innerHTML = '';
+            if (state.layers.diagonals) {
+                // Đường chéo AC
+                const dAC = createLine(svgA, svgC, '#7A8B99', '1.5', '4,4');
+                diagsGroup.appendChild(dAC);
+                // Đường chéo BD
+                const dBD = createLine(svgB, svgD, '#7A8B99', '1.5', '4,4');
+                diagsGroup.appendChild(dBD);
+
+                // Giao điểm O
+                const inter = Geometry.segmentsIntersection(A, C, B, D);
+                if (inter) {
+                    const svgO = mathToSvg(inter.x, inter.y);
+                    const circleO = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    circleO.setAttribute('cx', svgO.x);
+                    circleO.setAttribute('cy', svgO.y);
+                    circleO.setAttribute('r', '3.5');
+                    circleO.setAttribute('fill', '#D64550');
+                    diagsGroup.appendChild(circleO);
+
+                    addSvgText(diagsGroup, svgO.x + 6, svgO.y - 6, 'O', '#D64550', '13px', 'start', 'bold');
+                }
+            }
+        }
+
+        // 4. Lớp Góc
+        const anglesGroup = document.getElementById('labMeasurementsGroup');
+        if (anglesGroup) {
+            anglesGroup.innerHTML = '';
+            if (state.layers.angles) {
+                renderAngles(anglesGroup, [A, B, C, D], [svgA, svgB, svgC, svgD]);
+            }
+        }
+
+        // 5. Lớp Ký hiệu hình học (song song, bằng nhau, góc vuông)
+        const marksGroup = document.getElementById('labMarksGroup');
+        if (marksGroup) {
+            marksGroup.innerHTML = '';
+            if (state.layers.marks) {
+                renderGeometricMarks(marksGroup, [A, B, C, D], [svgA, svgB, svgC, svgD]);
+            }
+        }
+
+        // 6. Lớp 4 đỉnh kéo thả A, B, C, D
+        const verticesGroup = document.getElementById('labVerticesGroup');
+        if (verticesGroup) {
+            verticesGroup.innerHTML = '';
+            [svgA, svgB, svgC, svgD].forEach((svgP, idx) => {
+                const mathP = state.vertices[idx];
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                g.setAttribute('class', 'lab-vertex');
+                g.setAttribute('data-index', idx);
+                g.setAttribute('tabindex', '0');
+                g.setAttribute('role', 'slider');
+                g.setAttribute('aria-label', `Đỉnh ${VERTEX_NAMES[idx]}: (${mathP.x}; ${mathP.y})`);
+                g.style.cursor = 'grab';
+
+                // Vùng bấm vô hình >= 44px
+                const hitCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                hitCircle.setAttribute('cx', svgP.x);
+                hitCircle.setAttribute('cy', svgP.y);
+                hitCircle.setAttribute('r', '22');
+                hitCircle.setAttribute('fill', 'transparent');
+                hitCircle.setAttribute('pointer-events', 'all');
+                g.appendChild(hitCircle);
+
+                // Chấm tròn đỉnh 6px
+                const dotCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                dotCircle.setAttribute('cx', svgP.x);
+                dotCircle.setAttribute('cy', svgP.y);
+                dotCircle.setAttribute('r', '6');
+                dotCircle.setAttribute('fill', '#1F3A93');
+                dotCircle.setAttribute('stroke', '#FFFFFF');
+                dotCircle.setAttribute('stroke-width', '2');
+                g.appendChild(dotCircle);
+
+                // Nhãn chữ cái A, B, C, D
+                const offset = getLabelOffset(idx);
+                addSvgText(g, svgP.x + offset.x, svgP.y + offset.y, VERTEX_NAMES[idx], '#1F3A93', '15px', 'middle', 'bold');
+
+                // Nếu đang kéo đỉnh này: vẽ tooltip tọa độ
+                if (state.drag.active && state.drag.vertexIndex === idx) {
+                    renderCoordinateTooltip(g, svgP, mathP, VERTEX_NAMES[idx]);
+                }
+
+                verticesGroup.appendChild(g);
+            });
+        }
+
+        // Cập nhật nhận dạng và thanh trạng thái
+        updateClassification();
+    }
+
+    function getLabelOffset(idx) {
+        // Offset chữ nhãn để không đè lên hình
+        switch (idx) {
+            case 0: return { x: -14, y: 14 }; // A (dưới-trái)
+            case 1: return { x: 14, y: 14 };  // B (dưới-phải)
+            case 2: return { x: 14, y: -12 }; // C (trên-phải)
+            case 3: return { x: -14, y: -12 };// D (trên-trái)
+            default: return { x: 0, y: -12 };
+        }
+    }
+
+    function renderCoordinateTooltip(parent, svgP, mathP, name) {
+        const text = `${name}(${Geometry.formatNumberVi(mathP.x)}; ${Geometry.formatNumberVi(mathP.y)})`;
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('x', svgP.x - 36);
+        rect.setAttribute('y', svgP.y - 34);
+        rect.setAttribute('width', '72');
+        rect.setAttribute('height', '22');
+        rect.setAttribute('rx', '3');
+        rect.setAttribute('fill', '#FFE66D');
+        rect.setAttribute('stroke', '#3B3F46');
+        rect.setAttribute('stroke-width', '1');
+        parent.appendChild(rect);
+
+        addSvgText(parent, svgP.x, svgP.y - 19, text, '#1F3A93', '12px', 'middle', '600');
+    }
+
+    function renderSideMeasurements(parent, mathPts, svgPts) {
+        for (let i = 0; i < 4; i++) {
+            const p1 = mathPts[i];
+            const p2 = mathPts[(i + 1) % 4];
+            const svgP1 = svgPts[i];
+            const svgP2 = svgPts[(i + 1) % 4];
+
+            const len = Geometry.distance(p1, p2);
+            const midX = (svgP1.x + svgP2.x) / 2;
+            const midY = (svgP1.y + svgP2.y) / 2;
+
+            // Offset vuông góc với cạnh
+            const dx = svgP2.x - svgP1.x;
+            const dy = svgP2.y - svgP1.y;
+            const dist = Math.hypot(dx, dy) || 1;
+            const offX = -dy / dist * 12;
+            const offY = dx / dist * 12;
+
+            const t = addSvgText(parent, midX + offX, midY + offY, `${Geometry.formatNumberVi(len)} cm`, '#3B3F46', '11.5px', 'middle');
+            t.setAttribute('paint-order', 'stroke');
+            t.setAttribute('stroke', '#FFFFFF');
+            t.setAttribute('stroke-width', '3px');
+        }
+    }
+
+    function renderAngles(parent, mathPts, svgPts) {
+        const angles = [
+            Geometry.computeInteriorAngle(mathPts[3], mathPts[0], mathPts[1]),
+            Geometry.computeInteriorAngle(mathPts[0], mathPts[1], mathPts[2]),
+            Geometry.computeInteriorAngle(mathPts[1], mathPts[2], mathPts[3]),
+            Geometry.computeInteriorAngle(mathPts[2], mathPts[3], mathPts[0])
+        ];
+
+        for (let i = 0; i < 4; i++) {
+            const svgP = svgPts[i];
+            const angVal = angles[i];
+            const angStr = `${Geometry.formatNumberVi(angVal)}°`;
+
+            const off = getLabelOffset(i);
+            const t = addSvgText(parent, svgP.x + off.x * 1.8, svgP.y + off.y * 1.5, angStr, '#D64550', '11px', 'middle', '600');
+            t.setAttribute('paint-order', 'stroke');
+            t.setAttribute('stroke', '#FFFFFF');
+            t.setAttribute('stroke-width', '3px');
+        }
+    }
+
+    function renderGeometricMarks(parent, mathPts, svgPts) {
+        const [A, B, C, D] = mathPts;
+        const [svgA, svgB, svgC, svgD] = svgPts;
+
+        // 1. Góc vuông (nếu có góc 90 độ +- 0.5)
+        const angles = [
+            { idx: 0, val: Geometry.computeInteriorAngle(D, A, B), p: svgA, prev: svgD, next: svgB },
+            { idx: 1, val: Geometry.computeInteriorAngle(A, B, C), p: svgB, prev: svgA, next: svgC },
+            { idx: 2, val: Geometry.computeInteriorAngle(B, C, D), p: svgC, prev: svgB, next: svgD },
+            { idx: 3, val: Geometry.computeInteriorAngle(C, D, A), p: svgD, prev: svgC, next: svgA }
+        ];
+
+        angles.forEach(a => {
+            if (Math.abs(a.val - 90) <= Geometry.TOL_ANGLE) {
+                drawRightAngleSquare(parent, a.p, a.prev, a.next);
+            }
+        });
+
+        // 2. Ký hiệu song song (mũi tên > trên AB, CD hoặc BC, DA)
+        const vAB = Geometry.vector(A, B);
+        const vCD = Geometry.vector(C, D);
+        if (Geometry.areParallel(vAB, vCD)) {
+            drawParallelArrow(parent, svgA, svgB, 1);
+            drawParallelArrow(parent, svgD, svgC, 1);
+        }
+
+        const vBC = Geometry.vector(B, C);
+        const vDA = Geometry.vector(D, A);
+        if (Geometry.areParallel(vBC, vDA)) {
+            drawParallelArrow(parent, svgB, svgC, 2);
+            drawParallelArrow(parent, svgA, svgD, 2);
+        }
+    }
+
+    function drawRightAngleSquare(parent, p, p1, p2) {
+        const v1 = Geometry.normalize({ x: p1.x - p.x, y: p1.y - p.y });
+        const v2 = Geometry.normalize({ x: p2.x - p.x, y: p2.y - p.y });
+        const s = 11;
+        const pt1 = { x: p.x + v1.x * s, y: p.y + v1.y * s };
+        const pt2 = { x: p.x + v1.x * s + v2.x * s, y: p.y + v1.y * s + v2.y * s };
+        const pt3 = { x: p.x + v2.x * s, y: p.y + v2.y * s };
+
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', `M ${pt1.x} ${pt1.y} L ${pt2.x} ${pt2.y} L ${pt3.x} ${pt3.y}`);
+        path.setAttribute('fill', 'none');
+        path.setAttribute('stroke', '#D64550');
+        path.setAttribute('stroke-width', '1.5');
+        parent.appendChild(path);
+    }
+
+    function drawParallelArrow(parent, p1, p2, count) {
+        const midX = (p1.x + p2.x) / 2;
+        const midY = (p1.y + p2.y) / 2;
+        const u = Geometry.normalize({ x: p2.x - p1.x, y: p2.y - p1.y });
+        const n = { x: -u.y, y: u.x };
+        const size = 6;
+
+        for (let i = 0; i < count; i++) {
+            const offset = (i - (count - 1) / 2) * 8;
+            const cx = midX + u.x * offset;
+            const cy = midY + u.y * offset;
+
+            const tip = { x: cx + u.x * size, y: cy + u.y * size };
+            const left = { x: cx - u.x * size + n.x * size, y: cy - u.y * size + n.y * size };
+            const right = { x: cx - u.x * size - n.x * size, y: cy - u.y * size - n.y * size };
+
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', `M ${left.x} ${left.y} L ${tip.x} ${tip.y} L ${right.x} ${right.y}`);
+            path.setAttribute('fill', 'none');
+            path.setAttribute('stroke', '#1F3A93');
+            path.setAttribute('stroke-width', '1.8');
+            parent.appendChild(path);
+        }
+    }
+
+    function createLine(p1, p2, stroke, width, dash) {
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', p1.x);
+        line.setAttribute('y1', p1.y);
+        line.setAttribute('x2', p2.x);
+        line.setAttribute('y2', p2.y);
+        line.setAttribute('stroke', stroke);
+        line.setAttribute('stroke-width', width);
+        if (dash) line.setAttribute('stroke-dasharray', dash);
+        return line;
+    }
+
+    /**
+     * Tương tác kéo thả chuột / chạm trên bảng vẽ SVG (Pointer Events)
+     */
+    function bindCanvasInteraction() {
+        const svg = document.getElementById('labSvgCanvas');
+        if (!svg) return;
+
+        svg.addEventListener('pointerdown', (e) => {
+            const vertexGroup = e.target.closest('.lab-vertex');
+            if (!vertexGroup) return;
+
+            const idx = parseInt(vertexGroup.getAttribute('data-index'), 10);
+            if (isNaN(idx)) return;
+
+            pushHistory();
+            state.drag.active = true;
+            state.drag.vertexIndex = idx;
+            state.drag.pointerId = e.pointerId;
+            svg.setPointerCapture(e.pointerId);
+
+            const mathP = state.vertices[idx];
+            state.drag.startX = mathP.x;
+            state.drag.startY = mathP.y;
+
+            vertexGroup.style.cursor = 'grabbing';
+            e.preventDefault();
+        });
+
+        svg.addEventListener('pointermove', (e) => {
+            if (!state.drag.active) return;
+
+            const rect = svg.getBoundingClientRect();
+            const svgX = (e.clientX - rect.left) * (720 / rect.width);
+            const svgY = (e.clientY - rect.top) * (480 / rect.height);
+
+            const rawMath = svgToMath(svgX, svgY);
+            const snappedX = applySnap(rawMath.x, state.snapStep);
+            const snappedY = applySnap(rawMath.y, state.snapStep);
+
+            // Giới hạn |x|, |y| <= 50 cm
+            const clampedX = Math.max(-50, Math.min(50, snappedX));
+            const clampedY = Math.max(-50, Math.min(50, snappedY));
+
+            const idx = state.drag.vertexIndex;
+            const oldVertices = [...state.vertices];
+            const testVertices = oldVertices.map((v, i) => i === idx ? { x: clampedX, y: clampedY } : { ...v });
+
+            // Kiểm tra lồi theo thời gian thực (Mục 5.1)
+            const isValid = Geometry.isConvex(testVertices[0], testVertices[1], testVertices[2], testVertices[3]);
+
+            const alertBanner = document.getElementById('labAlertBanner');
+            const alertMsg = document.getElementById('labAlertMessage');
+            const coordHint = document.getElementById('labCoordHint');
+
+            if (isValid) {
+                state.vertices[idx] = { x: clampedX, y: clampedY };
+                if (alertBanner) alertBanner.classList.remove('warning');
+                if (alertMsg) alertMsg.textContent = `Đang kéo ${VERTEX_NAMES[idx]}(${Geometry.formatNumberVi(clampedX)}; ${Geometry.formatNumberVi(clampedY)})`;
+                if (coordHint) coordHint.textContent = `x = ${clampedX} cm, y = ${clampedY} cm`;
+                requestAnimationFrame(renderScene);
+                updateMeasurementsPanel();
+            } else {
+                // Giữ vị trí hợp lệ cuối cùng và phát cảnh báo (Mục 5.1)
+                if (alertBanner) alertBanner.classList.add('warning');
+                if (alertMsg) alertMsg.textContent = '⚠️ Hình sẽ bị lõm hoặc tự cắt. Hãy kéo đỉnh về phía khác.';
+                const canvasCard = document.querySelector('.lab-canvas-card');
+                if (canvasCard && !canvasCard.classList.contains('invalid-shake')) {
+                    canvasCard.classList.add('invalid-shake');
+                    setTimeout(() => canvasCard.classList.remove('invalid-shake'), 300);
+                }
+            }
+        });
+
+        const stopDrag = (e) => {
+            if (!state.drag.active) return;
+            const idx = state.drag.vertexIndex;
+            const vertexGroup = svg.querySelector(`.lab-vertex[data-index="${idx}"]`);
+            if (vertexGroup) vertexGroup.style.cursor = 'grab';
+
+            try {
+                if (state.drag.pointerId !== null) svg.releasePointerCapture(state.drag.pointerId);
+            } catch (_) {}
+
+            state.drag.active = false;
+            state.drag.vertexIndex = -1;
+            state.drag.pointerId = null;
+
+            const alertBanner = document.getElementById('labAlertBanner');
+            if (alertBanner) alertBanner.classList.remove('warning');
+
+            requestAnimationFrame(renderScene);
+            updateMeasurementsPanel();
+            syncUrl();
+        };
+
+        svg.addEventListener('pointerup', stopDrag);
+        svg.addEventListener('pointercancel', stopDrag);
+    }
+
+    /**
+     * Bàn phím trợ năng (Accessibility Keyboard Navigation)
+     */
+    function bindKeyboardShortcuts() {
+        // Tab chọn đỉnh, phím mũi tên di chuyển
+        document.addEventListener('keydown', (e) => {
+            // Undo: Ctrl+Z
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+                e.preventDefault();
+                undo();
+                return;
+            }
+            // Redo: Ctrl+Y hoặc Ctrl+Shift+Z
+            if (((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') ||
+                ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z')) {
+                e.preventDefault();
+                redo();
+                return;
+            }
+
+            // Phím mũi tên khi đang focus vào 1 đỉnh
+            const activeElem = document.activeElement;
+            if (activeElem && activeElem.classList.contains('lab-vertex')) {
+                const idx = parseInt(activeElem.getAttribute('data-index'), 10);
+                if (isNaN(idx)) return;
+
+                let dx = 0, dy = 0;
+                const step = state.snapStep === 0 ? 0.2 : (e.shiftKey ? state.snapStep * 5 : state.snapStep);
+
+                switch (e.key) {
+                    case 'ArrowLeft': dx = -step; break;
+                    case 'ArrowRight': dx = step; break;
+                    case 'ArrowUp': dy = step; break;
+                    case 'ArrowDown': dy = -step; break;
+                    default: return;
+                }
+
+                e.preventDefault();
+                pushHistory();
+                const cur = state.vertices[idx];
+                const newX = Math.round((cur.x + dx) * 100) / 100;
+                const newY = Math.round((cur.y + dy) * 100) / 100;
+
+                const testVertices = state.vertices.map((v, i) => i === idx ? { x: newX, y: newY } : { ...v });
+                if (Geometry.isConvex(...testVertices)) {
+                    state.vertices[idx] = { x: newX, y: newY };
+                    renderScene();
+                    updateMeasurementsPanel();
+                    syncUrl();
+                } else {
+                    const alertMsg = document.getElementById('labAlertMessage');
+                    if (alertMsg) alertMsg.textContent = '⚠️ Vị trí phím di chuyển làm hình bị lõm hoặc tự cắt.';
+                }
+            }
+        });
+    }
+
+    /**
+     * Quản lý Undo / Redo
+     */
+    function pushHistory() {
+        state.history.undo.push({
+            vertices: JSON.parse(JSON.stringify(state.vertices)),
+            mode: state.mode,
+            activePreset: state.activePreset,
+            params: { ...state.params }
+        });
+        if (state.history.undo.length > 100) state.history.undo.shift();
+        state.history.redo = [];
+        updateHistoryButtons();
+    }
+
+    function undo() {
+        if (state.history.undo.length === 0) return;
+        state.history.redo.push({
+            vertices: JSON.parse(JSON.stringify(state.vertices)),
+            mode: state.mode,
+            activePreset: state.activePreset,
+            params: { ...state.params }
+        });
+        const snap = state.history.undo.pop();
+        state.vertices = snap.vertices;
+        state.mode = snap.mode;
+        state.activePreset = snap.activePreset;
+        state.params = snap.params;
+
+        updateHistoryButtons();
+        renderScene();
+        updateMeasurementsPanel();
+        syncUrl();
+    }
+
+    function redo() {
+        if (state.history.redo.length === 0) return;
+        state.history.undo.push({
+            vertices: JSON.parse(JSON.stringify(state.vertices)),
+            mode: state.mode,
+            activePreset: state.activePreset,
+            params: { ...state.params }
+        });
+        const snap = state.history.redo.pop();
+        state.vertices = snap.vertices;
+        state.mode = snap.mode;
+        state.activePreset = snap.activePreset;
+        state.params = snap.params;
+
+        updateHistoryButtons();
+        renderScene();
+        updateMeasurementsPanel();
+        syncUrl();
+    }
+
+    function updateHistoryButtons() {
+        const btnUndo = document.getElementById('labBtnUndo');
+        const btnRedo = document.getElementById('labBtnRedo');
+        if (btnUndo) btnUndo.disabled = state.history.undo.length === 0;
+        if (btnRedo) btnRedo.disabled = state.history.redo.length === 0;
+    }
+
+    /**
+     * Cập nhật thông tin nhận dạng & thanh trạng thái
+     */
+    function updateClassification() {
+        if (!Classify) return;
+        const [A, B, C, D] = state.vertices;
+        const isaData = state.meta?.isa || Classify.DEFAULT_ISA;
+        const res = Classify.classify(A, B, C, D, isaData);
+
+        const statusText = document.getElementById('labStatusText');
+        if (statusText) {
+            statusText.textContent = res.statusText;
+        }
+
+        // Kiểm tra thông báo thêm/mất điều kiện khi loại hình thay đổi (Mục 6.4)
+        if (state.currentClassification && state.currentClassification.mostSpecific !== res.mostSpecific) {
+            const diff = Classify.getConditionDiff(state.currentClassification.mostSpecific, res.mostSpecific, isaData);
+            if (diff && !state.drag.active) {
+                const alertMsg = document.getElementById('labAlertMessage');
+                const alertBanner = document.getElementById('labAlertBanner');
+                if (alertMsg) alertMsg.textContent = diff.message;
+                if (alertBanner) {
+                    alertBanner.className = 'lab-alert-banner highlight-info';
+                }
+            }
+        }
+        state.currentClassification = res;
+    }
+
+    /**
+     * Cập nhật panel tab "Số đo" trực tiếp
+     */
+    function updateMeasurementsPanel() {
+        const container = document.getElementById('labMeasurementsContent');
+        if (!container || !Geometry) return;
+
+        const [A, B, C, D] = state.vertices;
+        const m = Geometry.computeMeasurements(A, B, C, D);
+
+        container.innerHTML = `
+            <div style="font-size: 0.95rem;">
+                <h5 style="font-size: 1.15rem; color: var(--color-ink); margin-bottom: 8px;">
+                    📏 Độ dài các cạnh
+                </h5>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px;">
+                    <div>AB: <strong>${Geometry.formatNumberVi(m.sides.AB)} cm</strong></div>
+                    <div>BC: <strong>${Geometry.formatNumberVi(m.sides.BC)} cm</strong></div>
+                    <div>CD: <strong>${Geometry.formatNumberVi(m.sides.CD)} cm</strong></div>
+                    <div>DA: <strong>${Geometry.formatNumberVi(m.sides.DA)} cm</strong></div>
+                </div>
+
+                <h5 style="font-size: 1.15rem; color: var(--color-ink); margin-bottom: 8px;">
+                    📐 Các góc trong
+                </h5>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px;">
+                    <div>∠A: <strong>${Geometry.formatNumberVi(m.angles.A)}°</strong></div>
+                    <div>∠B: <strong>${Geometry.formatNumberVi(m.angles.B)}°</strong></div>
+                    <div>∠C: <strong>${Geometry.formatNumberVi(m.angles.C)}°</strong></div>
+                    <div>∠D: <strong>${Geometry.formatNumberVi(m.angles.D)}°</strong></div>
+                </div>
+                <div class="small text-muted mb-3">Tổng 4 góc: <strong>${Geometry.formatNumberVi(m.angles.sum)}°</strong></div>
+
+                <h5 style="font-size: 1.15rem; color: var(--color-ink); margin-bottom: 8px;">
+                    ✂ Đường chéo & Chu vi, Diện tích
+                </h5>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px;">
+                    <div>AC: <strong>${Geometry.formatNumberVi(m.diagonals.AC)} cm</strong></div>
+                    <div>BD: <strong>${Geometry.formatNumberVi(m.diagonals.BD)} cm</strong></div>
+                </div>
+                <div style="background: #F4F8FD; border-left: 3px solid var(--color-ink); padding: 8px; border-radius: 2px;">
+                    <div>Chu vi (P): <strong style="font-size: 1.1rem; color: var(--color-ink);">${Geometry.formatNumberVi(m.perimeter)} cm</strong></div>
+                    <div>Diện tích (S): <strong style="font-size: 1.1rem; color: var(--color-margin);">${Geometry.formatNumberVi(m.area)} cm²</strong></div>
+                </div>
+            </div>
+        `;
+    }
+
+    function syncUrl() {
+        if (!UrlSync) return;
+        const query = UrlSync.serializeStateToUrl(state);
+        window.history.replaceState(null, '', window.location.pathname + query);
+    }
+
+    function syncControlsWithState() {
+        const snapCheck = document.getElementById('labSnapCheck');
+        if (snapCheck) snapCheck.checked = state.snap;
+
+        const snapStepSelect = document.getElementById('labSnapStepSelect');
+        if (snapStepSelect) snapStepSelect.value = state.snapStep.toString();
+
+        const modePresetBtn = document.getElementById('labModePresetBtn');
+        const modeFreeBtn = document.getElementById('labModeFreeBtn');
+        if (modePresetBtn && modeFreeBtn) {
+            modePresetBtn.classList.toggle('active', state.mode === 'param');
+            modeFreeBtn.classList.toggle('active', state.mode === 'free');
+        }
+    }
+
     function bindToolbarEvents() {
-        // Chuyển chế độ: Theo hình mẫu vs Tự do
         const modePresetBtn = document.getElementById('labModePresetBtn');
         const modeFreeBtn = document.getElementById('labModeFreeBtn');
         if (modePresetBtn && modeFreeBtn) {
@@ -160,55 +829,66 @@
                 state.mode = 'param';
                 modePresetBtn.classList.add('active');
                 modeFreeBtn.classList.remove('active');
+                syncUrl();
             });
             modeFreeBtn.addEventListener('click', () => {
                 state.mode = 'free';
                 modeFreeBtn.classList.add('active');
                 modePresetBtn.classList.remove('active');
+                syncUrl();
             });
         }
 
-        // Bắt lưới & bước
         const snapCheck = document.getElementById('labSnapCheck');
         if (snapCheck) {
             snapCheck.addEventListener('change', (e) => {
                 state.snap = e.target.checked;
+                syncUrl();
             });
         }
         const snapStepSelect = document.getElementById('labSnapStepSelect');
         if (snapStepSelect) {
             snapStepSelect.addEventListener('change', (e) => {
                 state.snapStep = parseFloat(e.target.value);
+                syncUrl();
             });
         }
 
-        // Các lớp hiển thị
         ['Sides', 'Angles', 'Diagonals', 'Marks'].forEach(layer => {
             const chk = document.getElementById(`labLayer${layer}`);
             if (chk) {
                 chk.addEventListener('change', (e) => {
-                    const key = layer.toLowerCase();
-                    state.layers[key] = e.target.checked;
+                    state.layers[layer.toLowerCase()] = e.target.checked;
+                    renderScene();
                 });
             }
         });
 
-        // Nút chia sẻ URL
+        const btnUndo = document.getElementById('labBtnUndo');
+        if (btnUndo) btnUndo.addEventListener('click', undo);
+
+        const btnRedo = document.getElementById('labBtnRedo');
+        if (btnRedo) btnRedo.addEventListener('click', redo);
+
+        const btnReset = document.getElementById('labBtnReset');
+        if (btnReset) {
+            btnReset.addEventListener('click', () => {
+                applyPreset(state.activePreset);
+            });
+        }
+
         const btnShare = document.getElementById('labBtnShare');
         if (btnShare) {
             btnShare.addEventListener('click', () => {
-                const url = new URL(window.location.href);
-                url.searchParams.set('shape', state.activePreset);
-                url.searchParams.set('mode', state.mode);
-                navigator.clipboard.writeText(url.toString()).then(() => {
-                    alert('✓ Đã sao chép liên kết vào bộ nhớ tạm: ' + url.toString());
+                const url = window.location.href;
+                navigator.clipboard.writeText(url).then(() => {
+                    alert('✓ Đã sao chép liên kết bảng vẽ vào bộ nhớ tạm:\n' + url);
                 }).catch(() => {
-                    prompt('Sao chép liên kết này:', url.toString());
+                    prompt('Sao chép liên kết này:', url);
                 });
             });
         }
 
-        // Nút zoom & vừa khung
         const btnZoomIn = document.getElementById('labBtnZoomIn');
         const btnZoomOut = document.getElementById('labBtnZoomOut');
         const btnZoomFit = document.getElementById('labBtnZoomFit');
@@ -216,26 +896,26 @@
             btnZoomIn.addEventListener('click', () => {
                 state.zoom = Math.min(2.0, state.zoom + 0.1);
                 applyTransform();
+                renderScene();
             });
         }
         if (btnZoomOut) {
             btnZoomOut.addEventListener('click', () => {
                 state.zoom = Math.max(0.5, state.zoom - 0.1);
                 applyTransform();
+                renderScene();
             });
         }
         if (btnZoomFit) {
             btnZoomFit.addEventListener('click', () => {
                 state.zoom = 1;
-                state.pan = { x: 80, y: 380 };
+                state.pan = { x: 120, y: 380 };
                 applyTransform();
+                renderScene();
             });
         }
     }
 
-    /**
-     * Gắn sự kiện chuyển tab bên phải
-     */
     function bindSidebarTabs() {
         const tabButtons = document.querySelectorAll('.lab-tab-btn');
         tabButtons.forEach(btn => {
@@ -248,54 +928,29 @@
                     pane.classList.remove('active');
                 });
                 const activePane = document.getElementById(targetTab);
-                if (activePane) {
-                    activePane.classList.add('active');
-                }
+                if (activePane) activePane.classList.add('active');
             });
         });
     }
 
-    /**
-     * Khởi tạo hệ trục tọa độ toán học (gốc dưới-trái, đánh số mỗi 5 ô)
-     */
     function initSvgAxes() {
         const axesGroup = document.getElementById('labAxesGroup');
         if (!axesGroup) return;
 
         axesGroup.innerHTML = '';
 
-        // Trục hoành Ox và Trục tung Oy
         const axisLines = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        axisLines.setAttribute('d', 'M 0 0 L 600 0 M 0 0 L 0 -350');
+        axisLines.setAttribute('d', 'M 0 0 L 580 0 M 0 0 L 0 -340');
         axisLines.setAttribute('stroke', '#3B3F46');
         axisLines.setAttribute('stroke-width', '1.5');
         axesGroup.appendChild(axisLines);
 
-        // Mũi tên Ox
-        const arrowX = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        arrowX.setAttribute('d', 'M 595 -4 L 602 0 L 595 4');
-        arrowX.setAttribute('stroke', '#3B3F46');
-        arrowX.setAttribute('stroke-width', '1.5');
-        arrowX.setAttribute('fill', 'none');
-        axesGroup.appendChild(arrowX);
-
-        // Mũi tên Oy
-        const arrowY = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        arrowY.setAttribute('d', 'M -4 -345 L 0 -352 L 4 -345');
-        arrowY.setAttribute('stroke', '#3B3F46');
-        arrowY.setAttribute('stroke-width', '1.5');
-        arrowY.setAttribute('fill', 'none');
-        axesGroup.appendChild(arrowY);
-
-        // Nhãn trục x, y, O
-        addSvgText(axesGroup, 608, 4, 'x (cm)', '#3B3F46', '12px', 'start');
-        addSvgText(axesGroup, 0, -360, 'y (cm)', '#3B3F46', '12px', 'middle');
+        addSvgText(axesGroup, 588, 4, 'x (cm)', '#3B3F46', '12px', 'start');
+        addSvgText(axesGroup, 0, -350, 'y (cm)', '#3B3F46', '12px', 'middle');
         addSvgText(axesGroup, -10, 15, 'O', '#3B3F46', '12px', 'end');
 
-        // Vạch và số mỗi 5 ô (1 ô = 24px)
         for (let i = 5; i <= 20; i += 5) {
             const px = i * 24;
-            // Vạch x
             const tickX = document.createElementNS('http://www.w3.org/2000/svg', 'line');
             tickX.setAttribute('x1', px);
             tickX.setAttribute('y1', -3);
@@ -305,7 +960,6 @@
             axesGroup.appendChild(tickX);
             addSvgText(axesGroup, px, 16, i.toString(), '#3B3F46', '11px', 'middle');
 
-            // Vạch y
             const py = -i * 24;
             const tickY = document.createElementNS('http://www.w3.org/2000/svg', 'line');
             tickY.setAttribute('x1', -3);
@@ -320,7 +974,7 @@
         applyTransform();
     }
 
-    function addSvgText(parent, x, y, text, color, fontSize, textAnchor) {
+    function addSvgText(parent, x, y, text, color, fontSize, textAnchor, fontWeight) {
         const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         t.setAttribute('x', x);
         t.setAttribute('y', y);
@@ -328,6 +982,7 @@
         t.setAttribute('font-size', fontSize);
         t.setAttribute('font-family', "'Be Vietnam Pro', sans-serif");
         t.setAttribute('text-anchor', textAnchor || 'start');
+        if (fontWeight) t.setAttribute('font-weight', fontWeight);
         t.textContent = text;
         parent.appendChild(t);
         return t;
