@@ -625,4 +625,57 @@ public class ShapeRepository : IShapeRepository
         }
         return list;
     }
+
+    public async Task<EdgeRelationDetailDto?> GetEdgeRelationDetailAsync(string childSlug, string parentSlug)
+    {
+        await using var session = _driverService.CreateSession();
+
+        // 1. Truy vấn thông tin cạnh, điều kiện, lý do và định nghĩa 2 hình (Mục 5.2 - Truy vấn 4.1)
+        var relQuery = @"
+            MATCH (c:Shape {slug: $child})-[r:IS_A]->(p:Shape {slug: $parent})
+            OPTIONAL MATCH (c)-[:HAS_DEFINITION]->(dc:Definition)
+            OPTIONAL MATCH (p)-[:HAS_DEFINITION]->(dp:Definition)
+            RETURN c.name AS hinhCon, p.name AS hinhCha, c.slug AS slugCon, p.slug AS slugCha,
+                   r.condition AS dieuKien, r.conditionShort AS dieuKienNgan,
+                   r.reason AS lyDo, dc.content AS dinhNghiaCon, dp.content AS dinhNghiaCha;
+        ";
+        var relCursor = await session.RunAsync(relQuery, new { child = childSlug, parent = parentSlug });
+        if (!await relCursor.FetchAsync())
+        {
+            return null;
+        }
+
+        var detail = new EdgeRelationDetailDto
+        {
+            ChildName = relCursor.Current["hinhCon"].As<string>(),
+            ParentName = relCursor.Current["hinhCha"].As<string>(),
+            ChildSlug = relCursor.Current["slugCon"].As<string>(),
+            ParentSlug = relCursor.Current["slugCha"].As<string>(),
+            Condition = relCursor.Current["dieuKien"].As<string?>(),
+            ConditionShort = relCursor.Current["dieuKienNgan"].As<string?>(),
+            Reason = relCursor.Current["lyDo"].As<string?>(),
+            ChildDefinition = relCursor.Current["dinhNghiaCon"].As<string?>(),
+            ParentDefinition = relCursor.Current["dinhNghiaCha"].As<string?>()
+        };
+
+        // 2. Truy vấn tính chất thừa hưởng qua cạnh này (Mục 5.2 - Truy vấn 4.3)
+        var propQuery = @"
+            MATCH (:Shape {slug: $child})-[:IS_A]->(p:Shape {slug: $parent})
+            MATCH (p)-[:IS_A*0..]->(a:Shape)-[:HAS_PROPERTY]->(x:Property)
+            RETURN DISTINCT x.id AS id, x.content AS noiDung, a.name AS nguon
+            ORDER BY nguon, noiDung;
+        ";
+        var propCursor = await session.RunAsync(propQuery, new { child = childSlug, parent = parentSlug });
+        while (await propCursor.FetchAsync())
+        {
+            detail.InheritedProperties.Add(new InheritedPropertyItemDto
+            {
+                Id = propCursor.Current["id"].As<string>(),
+                Content = propCursor.Current["noiDung"].As<string>(),
+                Source = propCursor.Current["nguon"].As<string>()
+            });
+        }
+
+        return detail;
+    }
 }

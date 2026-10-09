@@ -13,4 +13,5 @@ public interface IShapeRepository
     Task<CompareViewModel> CompareShapesAsync(string slug1, string slug2);
     Task<List<ShapeSpecItem>> GetShapeSpecsAsync();
     Task<List<ShapeConditionItem>> GetShapeConditionsAsync();
+    Task<EdgeRelationDetailDto?> GetEdgeRelationDetailAsync(string childSlug, string parentSlug);
 }

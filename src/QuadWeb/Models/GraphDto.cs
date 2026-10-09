@@ -26,3 +26,24 @@ public class GraphDataDto
     public List<GraphNodeDto> Nodes { get; set; } = new();
     public List<GraphEdgeDto> Edges { get; set; } = new();
 }
+
+public class InheritedPropertyItemDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Content { get; set; } = string.Empty;
+    public string Source { get; set; } = string.Empty;
+}
+
+public class EdgeRelationDetailDto
+{
+    public string ChildName { get; set; } = string.Empty;
+    public string ParentName { get; set; } = string.Empty;
+    public string ChildSlug { get; set; } = string.Empty;
+    public string ParentSlug { get; set; } = string.Empty;
+    public string? Condition { get; set; }
+    public string? ConditionShort { get; set; }
+    public string? Reason { get; set; }
+    public string? ChildDefinition { get; set; }
+    public string? ParentDefinition { get; set; }
+    public List<InheritedPropertyItemDto> InheritedProperties { get; set; } = new();
+}

@@ -30,4 +30,33 @@ public class GraphApiController : ControllerBase
             return StatusCode(500, new { error = "Không tải được sơ đồ quan hệ. Vui lòng thử lại sau." });
         }
     }
+
+    [HttpGet("relation")]
+    public async Task<IActionResult> GetRelationDetail([FromQuery] string? child, [FromQuery] string? parent)
+    {
+        if (string.IsNullOrWhiteSpace(child) || string.IsNullOrWhiteSpace(parent))
+        {
+            return BadRequest(new { error = "Tham số 'child' và 'parent' không được để trống." });
+        }
+
+        try
+        {
+            var data = await _shapeService.GetEdgeRelationDetailAsync(
+                child.Trim().ToLowerInvariant(),
+                parent.Trim().ToLowerInvariant()
+            );
+
+            if (data == null)
+            {
+                return NotFound(new { error = $"Không tìm thấy quan hệ IS_A trực tiếp giữa '{child}' và '{parent}'." });
+            }
+
+            return Ok(data);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Lỗi khi truy vấn thông tin quan hệ giữa {Child} và {Parent}", child, parent);
+            return StatusCode(500, new { error = "Không tải được thông tin quan hệ này. Vui lòng thử lại sau." });
+        }
+    }
 }

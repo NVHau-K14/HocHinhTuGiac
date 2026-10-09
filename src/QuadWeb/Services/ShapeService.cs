@@ -56,4 +56,9 @@ public class ShapeService : IShapeService
     {
         return _shapeRepository.GetShapeConditionsAsync();
     }
+
+    public Task<EdgeRelationDetailDto?> GetEdgeRelationDetailAsync(string childSlug, string parentSlug)
+    {
+        return _shapeRepository.GetEdgeRelationDetailAsync(childSlug, parentSlug);
+    }
 }

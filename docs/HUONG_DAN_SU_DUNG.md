@@ -41,14 +41,51 @@ Khi mở một hình (ví dụ: *Hình chữ nhật* tại `/shapes/hinh-chu-nha
 
 ---
 
-### 2.3. Sơ đồ phân cấp đồ thị tương tác (vis-network)
+### 2.3. Sơ đồ phân cấp đồ thị tương tác (vis-network v2.3)
 - Nhấp vào nút **"Xem sơ đồ phân cấp đầy đủ (Đồ thị tương tác) 🌳"** ở đầu các trang để mở cửa sổ đồ thị toàn màn hình.
-- **Thao tác tương tác:**
-  - *Kéo thả:* Nhấp giữ chuột để di chuyển các node hình học hoặc xoay chuyển khung nhìn.
-  - *Phóng to / Thu nhỏ:* Dùng con lăn chuột để zoom in/zoom out xem toàn cảnh.
-  - *Nhấp chọn Node:* Bấm vào một hình để mở bảng tóm tắt thông tin nhanh và liên kết nhảy tới hình đó.
-  - *Nút đóng:* Nhấp nút "Đóng [X]" hoặc bấm phím Escape / nhấp ra ngoài nền mờ để đóng cửa sổ.
-- **Chế độ xem trên thiết bị di động:** Nếu màn hình nhỏ, hệ thống bổ sung danh sách phân cấp 5 tầng dạng thẻ tiện lợi bên dưới đồ thị.
+- **Bố cục hình học 5 tầng cân xứng:**
+  - Tầng 1 (Đỉnh): *Tứ giác* tổng quát.
+  - Tầng 2: Nhánh *Hình thang* (trái) và Nhánh *Hình diều* (phải).
+  - Tầng 3: *Hình thang vuông*, *Hình thang cân*, *Hình bình hành*.
+  - Tầng 4: *Hình chữ nhật*, *Hình thoi*.
+  - Tầng 5 (Đáy): *Hình vuông* — kết tinh của cả Hình chữ nhật và Hình thoi.
+  - Các nhãn điều kiện được thiết kế nằm ngang trên nền dạ quang vàng sáng (`#FFE66D`), chữ mực xanh đậm (`#1F3A93`), viền mảnh tinh tế, không bao giờ bị cắt chéo qua hình.
+
+- **Chuyển đổi 2 chiều đọc trực quan (Segmented Control):**
+  - **Chiều 1: "Thêm điều kiện" (Mặc định):**
+    - Mũi tên chỉ từ hình cha xuống hình con (ví dụ: *Hình bình hành* $\to$ *Hình thoi*).
+    - Nhãn trên cạnh hiển thị điều kiện cần thêm: `+ 2 cạnh kề bằng nhau`, `+ 1 góc vuông`, `+ 2 đường chéo vuông góc`, v.v.
+    - Giúp học sinh học thuộc các **dấu hiệu nhận biết** để chứng minh từ hình tổng quát thành hình đặc biệt.
+  - **Chiều 2: "Theo quan hệ IS_A":**
+    - Bấm nút *"Theo quan hệ IS_A"* trên thanh công cụ đồ thị.
+    - Mũi tên quay ngược chiều từ hình con lên hình cha (ví dụ: *Hình vuông* $\to$ *Hình chữ nhật*).
+    - Nhãn trên cạnh hiển thị: `là Hình chữ nhật`, `là Hình thoi`.
+    - Thể hiện bản chất phân loại phả hệ toán học: Hình con kế thừa mọi tính chất của hình cha.
+
+![Sơ đồ đồ thị chế độ IS_A](screenshots/graph_mode_is_a.png)
+
+- **Tương tác thông minh trên cạnh & Node:**
+  - *Rê chuột (Hover) lên mũi tên / nhãn:* Mũi tên chuyển màu đỏ bút chấm bài (`#D64550`), con trỏ chuột đổi sang dạng bàn tay (`pointer`).
+  - *Bấm vào mũi tên (Click edge):* Cạnh được chọn sẽ bừng sáng với đường nét đỏ đậm (4.5px), hai node đầu mút đổi viền đỏ; toàn bộ các hình và mũi tên khác sẽ được làm mờ nhẹ (`opacity ~ 0.3`) để bạn tập trung cao độ vào cặp hình đang nghiên cứu. Bấm ra khoảng trống ngoài đồ thị để hoàn tác về trạng thái ban đầu.
+  - *Bấm vào hình (Click node):* Mở thẳng trang lý thuyết chi tiết của hình tương ứng (`/shapes/{slug}`).
+
+- **Bảng thông tin chi tiết mối quan hệ (Detail Panel 6 mục):**
+  Khi bấm vào bất kỳ mũi tên quan hệ nào, một bảng ghi chú dạng sổ tay bìa cứng sẽ mở ra ngay trong giao diện (bên phải trên Desktop, trượt mượt mà từ dưới lên dạng Bottom Sheet trên Mobile):
+  1. **Tiêu đề quan hệ:** Tên hình cha $\to$ Tên hình con kèm câu tóm tắt quan hệ.
+  2. **Bản chất hình học:** Nhắc nhớ định nghĩa phả hệ cốt lõi (ví dụ: *"Hình vuông là một hình thoi đặc biệt khi có thêm 1 góc vuông hoặc 2 đường chéo bằng nhau"*).
+  3. **Điều kiện cần & đủ:** Liệt kê đầy đủ tất cả các dấu hiệu hình học để chuyển hóa từ hình cha sang hình con theo chuẩn SGK.
+  4. **Lý do hình học (Chứng minh ngắn gọn):** Giải thích căn cứ toán học logic vì sao khi bổ sung điều kiện đó thì các tính chất khác tự động thỏa mãn.
+  5. **Tính chất thừa hưởng (Kế thừa từ hình cha):** Mục bấm gập/mở (accordion) liệt kê tất cả các tính chất về cạnh, góc, đường chéo mà hình con nghiễm nhiên thừa hưởng từ hình cha.
+  6. **Lối tắt bài học:** Hai nút chuyển nhanh đến trang bài học đầy đủ của *Hình cha* và *Hình con*.
+
+![Bảng chi tiết quan hệ trên Desktop](screenshots/graph_panel_desktop.png)
+
+![Bảng chi tiết quan hệ trên Di động (360px)](screenshots/graph_panel_mobile.png)
+
+- **Đóng bảng & Thoát sơ đồ:**
+  - Bấm nút **✕** trên đầu bảng chi tiết để đóng bảng (sơ đồ sẽ sáng lại bình thường).
+  - Bấm phím **Escape (Esc)**: Nếu bảng chi tiết đang mở, phím Esc sẽ đóng bảng trước; nếu không có bảng chi tiết, phím Esc sẽ đóng toàn bộ cửa sổ sơ đồ.
+  - Nút **"✕ Đóng sơ đồ"** trên thanh tiêu đề luôn hiển thị rõ ràng trên một dòng duy nhất, không bao giờ bị ngắt dòng ngay cả trên điện thoại nhỏ (360px).
 
 ---
 

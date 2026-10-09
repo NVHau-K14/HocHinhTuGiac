@@ -1,5 +1,5 @@
 // ==========================================================================
-// VIS-NETWORK GRAPH VIEWER (PBI-11 / v2.3)
+// VIS-NETWORK GRAPH VIEWER (PBI-11 / v2.3 - Giai đoạn 4 hoàn thiện)
 // Lazy load CDN chỉ khi người dùng bấm nút "Xem sơ đồ quan hệ"
 // ==========================================================================
 
@@ -9,6 +9,8 @@ let currentGraphMode = 'condition'; // 'condition' (Thêm điều kiện) hoặc
 let selectedEdgeId = null;
 let nodesDataSet = null;
 let edgesDataSet = null;
+let currentRelationData = null;
+let isPropsExpanded = false;
 
 function openGraphModal() {
     const modal = document.getElementById('graphModal');
@@ -32,7 +34,7 @@ function closeGraphModal() {
     const modal = document.getElementById('graphModal');
     if (!modal) return;
 
-    resetGraphHighlight();
+    closeEdgeRelationPanel();
     modal.style.display = 'none';
     document.body.style.overflow = 'auto';
 }
@@ -230,12 +232,13 @@ function renderVisNetwork(container, data) {
             const clickedId = params.nodes[0];
             window.location.href = '/shapes/' + clickedId;
         } else if (params.edges && params.edges.length > 0) {
-            // 2. Bấm vào CẠNH (hoặc nhãn cạnh): Chọn cạnh, tô nổi và làm mờ phần còn lại
+            // 2. Bấm vào CẠNH (hoặc nhãn cạnh): Chọn cạnh, tô nổi và mở Panel chi tiết (Mục 4)
             const edgeId = params.edges[0];
             highlightSelectedEdge(edgeId);
+            openEdgeRelationPanel(edgeId);
         } else {
-            // 3. Bấm ra ngoài khoảng trống canvas: Bỏ chọn, khôi phục bình thường
-            resetGraphHighlight();
+            // 3. Bấm ra ngoài khoảng trống canvas: Bỏ chọn và đóng panel
+            closeEdgeRelationPanel();
         }
     });
 
@@ -291,7 +294,7 @@ function setGraphMode(mode) {
 
     // Tái cấu trúc danh sách cạnh
     if (edgesDataSet && graphDataCache) {
-        resetGraphHighlight();
+        closeEdgeRelationPanel();
         const newEdges = buildVisEdges(graphDataCache.edges, currentGraphMode);
         edgesDataSet.clear();
         edgesDataSet.add(newEdges);
@@ -399,6 +402,173 @@ function resetGraphHighlight() {
     nodesDataSet.update(nodeUpdates);
 }
 
+// Mở và nạp dữ liệu Panel chi tiết quan hệ cạnh (Mục 4)
+function openEdgeRelationPanel(edgeId) {
+    const panel = document.getElementById('edgeDetailPanel');
+    const loading = document.getElementById('edgePanelLoading');
+    const errorEl = document.getElementById('edgePanelError');
+    const content = document.getElementById('edgePanelContent');
+
+    if (!panel || !edgesDataSet) return;
+
+    const edge = edgesDataSet.get(edgeId);
+    if (!edge) return;
+
+    panel.style.display = 'block';
+    if (loading) loading.style.display = 'block';
+    if (errorEl) errorEl.style.display = 'none';
+    if (content) content.style.display = 'none';
+
+    // Chuyển focus vào panel cho accessibility (Mục 4)
+    panel.focus();
+
+    const childSlug = edge.childSlug;
+    const parentSlug = edge.parentSlug;
+
+    fetch(`/api/relation?child=${encodeURIComponent(childSlug)}&parent=${encodeURIComponent(parentSlug)}`)
+        .then(res => {
+            if (!res.ok) throw new Error('Không thể tải thông tin quan hệ.');
+            return res.json();
+        })
+        .then(data => {
+            currentRelationData = data;
+            if (loading) loading.style.display = 'none';
+            renderEdgePanelContent(data);
+            if (content) content.style.display = 'block';
+        })
+        .catch(err => {
+            console.error(err);
+            if (loading) loading.style.display = 'none';
+            if (errorEl) {
+                errorEl.style.display = 'block';
+                const msg = document.getElementById('edgePanelErrorMsg');
+                if (msg) msg.textContent = 'Không tải được thông tin quan hệ này. Vui lòng thử lại sau.';
+            }
+        });
+}
+
+// Đóng panel chi tiết cạnh và trả focus về canvas
+function closeEdgeRelationPanel() {
+    const panel = document.getElementById('edgeDetailPanel');
+    if (panel) {
+        panel.style.display = 'none';
+    }
+    resetGraphHighlight();
+    const container = document.getElementById('visNetworkContainer');
+    if (container) {
+        container.focus();
+    }
+}
+
+// Dựng nội dung panel theo đúng 6 mục đặc tả mục 4
+function renderEdgePanelContent(data) {
+    // 1. Tiêu đề
+    const titleEl = document.getElementById('panelEdgeTitle');
+    if (titleEl) {
+        titleEl.textContent = `${data.childName} → ${data.parentName}`;
+    }
+
+    // 2. Quan hệ
+    const relEl = document.getElementById('panelEdgeRelation');
+    if (relEl) {
+        relEl.innerHTML = `<strong>${data.childName}</strong> là trường hợp đặc biệt của <strong>${data.parentName}</strong>.`;
+    }
+    const roleBadge = document.getElementById('panelEdgeRoleBadge');
+    if (roleBadge) {
+        roleBadge.textContent = `(Hình con: ${data.childName} — Hình cha: ${data.parentName})`;
+    }
+
+    // 3. Thêm điều kiện (khối nổi bật tô dạ quang)
+    const formulaEl = document.getElementById('panelEdgeFormula');
+    if (formulaEl) {
+        const cond = data.condition || data.conditionShort || 'thêm điều kiện';
+        formulaEl.innerHTML = `${data.parentName} <mark class="condition-highlight">+ ${cond}</mark> = ${data.childName}`;
+    }
+
+    // 4. Vì sao có quan hệ cha-con & Định nghĩa hai hình
+    const reasonText = document.getElementById('panelEdgeReasonText');
+    if (reasonText) {
+        if (data.reason && data.reason.trim()) {
+            reasonText.textContent = data.reason;
+            reasonText.style.display = 'block';
+        } else {
+            reasonText.style.display = 'none';
+        }
+    }
+
+    const titleDefChild = document.getElementById('panelTitleDefChild');
+    if (titleDefChild) titleDefChild.textContent = `Định nghĩa ${data.childName} (hình con):`;
+    const textDefChild = document.getElementById('panelTextDefChild');
+    if (textDefChild) textDefChild.textContent = data.childDefinition || 'Đang cập nhật định nghĩa...';
+
+    const titleDefParent = document.getElementById('panelTitleDefParent');
+    if (titleDefParent) titleDefParent.textContent = `Định nghĩa ${data.parentName} (hình cha):`;
+    const textDefParent = document.getElementById('panelTextDefParent');
+    if (textDefParent) textDefParent.textContent = data.parentDefinition || 'Đang cập nhật định nghĩa...';
+
+    // 5. Tính chất thừa hưởng
+    const propsSec = document.getElementById('panelSectionProps');
+    const propsBadge = document.getElementById('panelPropsCountBadge');
+
+    isPropsExpanded = false;
+    if (data.inheritedProperties && data.inheritedProperties.length > 0) {
+        if (propsSec) propsSec.style.display = 'block';
+        if (propsBadge) propsBadge.textContent = data.inheritedProperties.length;
+        renderPropsItems(data.inheritedProperties, false);
+    } else {
+        if (propsSec) propsSec.style.display = 'none';
+    }
+
+    // 6. Hành động
+    const btnChild = document.getElementById('btnPanelChildLesson');
+    if (btnChild) {
+        btnChild.href = `/shapes/${data.childSlug}`;
+        btnChild.textContent = `Mở bài học ${data.childName}`;
+    }
+    const btnParent = document.getElementById('btnPanelParentLesson');
+    if (btnParent) {
+        btnParent.href = `/shapes/${data.parentSlug}`;
+        btnParent.textContent = `Mở bài học ${data.parentName}`;
+    }
+    const btnCompare = document.getElementById('btnPanelCompare');
+    if (btnCompare) {
+        btnCompare.href = `/compare?a=${data.childSlug}&b=${data.parentSlug}`;
+        btnCompare.textContent = `So sánh ${data.childName} & ${data.parentName}`;
+    }
+}
+
+// Hiển thị danh sách tính chất thừa hưởng kèm thu gọn/mở rộng
+function renderPropsItems(props, expanded) {
+    const propsList = document.getElementById('panelPropsList');
+    const btnToggleProps = document.getElementById('btnToggleProps');
+    if (!propsList) return;
+
+    propsList.innerHTML = '';
+    const displayCount = expanded ? props.length : Math.min(5, props.length);
+
+    for (let i = 0; i < displayCount; i++) {
+        const p = props[i];
+        const li = document.createElement('li');
+        li.className = 'mb-1 ps-2';
+        li.style.borderLeft = '2.5px solid var(--color-ink)';
+        li.innerHTML = `<span>${p.content}</span> <span class="badge" style="background:#e9edf5; color:var(--color-ink); font-size:0.72rem; margin-left:4px;">Nguồn: ${p.source}</span>`;
+        propsList.appendChild(li);
+    }
+
+    if (btnToggleProps) {
+        if (props.length > 5) {
+            btnToggleProps.style.display = 'inline-block';
+            if (expanded) {
+                btnToggleProps.textContent = 'Thu gọn tính chất ↑';
+            } else {
+                btnToggleProps.textContent = `Xem thêm ${props.length - 5} tính chất ↓`;
+            }
+        } else {
+            btnToggleProps.style.display = 'none';
+        }
+    }
+}
+
 // Bắt sự kiện khi DOM tải xong
 document.addEventListener('DOMContentLoaded', function () {
     // Nút mở modal
@@ -423,6 +593,33 @@ document.addEventListener('DOMContentLoaded', function () {
         btnClose.addEventListener('click', closeGraphModal);
     }
 
+    // Nút đóng panel chi tiết cạnh
+    const btnCloseEdge = document.getElementById('btnCloseEdgePanel');
+    if (btnCloseEdge) {
+        btnCloseEdge.addEventListener('click', closeEdgeRelationPanel);
+    }
+
+    // Nút xem thêm tính chất
+    const btnToggleProps = document.getElementById('btnToggleProps');
+    if (btnToggleProps) {
+        btnToggleProps.addEventListener('click', function () {
+            if (currentRelationData && currentRelationData.inheritedProperties) {
+                isPropsExpanded = !isPropsExpanded;
+                renderPropsItems(currentRelationData.inheritedProperties, isPropsExpanded);
+            }
+        });
+    }
+
+    // Nút thử lại khi tải panel lỗi
+    const btnRetryEdge = document.getElementById('btnRetryEdgeDetail');
+    if (btnRetryEdge) {
+        btnRetryEdge.addEventListener('click', function () {
+            if (selectedEdgeId) {
+                openEdgeRelationPanel(selectedEdgeId);
+            }
+        });
+    }
+
     // Nút chuyển chiều đọc
     const btnCondition = document.getElementById('btnModeCondition');
     if (btnCondition) {
@@ -434,13 +631,13 @@ document.addEventListener('DOMContentLoaded', function () {
         btnIsA.addEventListener('click', () => setGraphMode('is_a'));
     }
 
-    // Thử lại khi lỗi
+    // Thử lại khi lỗi sơ đồ
     const btnRetry = document.getElementById('btnRetryGraph');
     if (btnRetry) {
         btnRetry.addEventListener('click', loadGraph);
     }
 
-    // Đóng khi click ngoài backdrop
+    // Đóng khi click ngoài backdrop modal
     const modal = document.getElementById('graphModal');
     if (modal) {
         modal.addEventListener('click', function (e) {
@@ -450,10 +647,15 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Đóng bằng phím Escape
+    // Đóng bằng phím Escape (Ưu tiên đóng panel chi tiết trước, nếu không có panel thì đóng modal)
     document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') {
-            closeGraphModal();
+            const panel = document.getElementById('edgeDetailPanel');
+            if (panel && panel.style.display !== 'none') {
+                closeEdgeRelationPanel();
+            } else {
+                closeGraphModal();
+            }
         }
     });
 

@@ -48,8 +48,82 @@
             </div>
         </div>
 
-        <!-- Vùng vẽ canvas đồ thị vis-network (chiều cao clamp theo mục 3.3) -->
-        <div id="visNetworkContainer" class="vis-canvas-wrapper" style="height: clamp(420px, 68vh, 680px); width: 100%; border: 1.5px solid var(--color-grid); border-radius: 6px; background-color: var(--color-paper); position: relative;"></div>
+        <!-- Khung chứa Canvas và Panel chi tiết quan hệ -->
+        <div class="graph-viewport-wrapper position-relative" style="overflow: hidden; border: 1.5px solid var(--color-grid); border-radius: 6px; background-color: var(--color-paper);">
+            <!-- Vùng vẽ canvas đồ thị vis-network (chiều cao clamp theo mục 3.3) -->
+            <div id="visNetworkContainer" class="vis-canvas-wrapper" style="height: clamp(420px, 68vh, 680px); width: 100%;"></div>
+
+            <!-- Panel thông tin quan hệ khi bấm vào cạnh (Mục 4 PROMPT_SUA_SO_DO_v2_3) -->
+            <aside id="edgeDetailPanel" class="edge-detail-panel" style="display: none;" role="region" aria-live="polite" aria-label="Thông tin quan hệ hai hình" tabindex="-1">
+                <div class="edge-panel-header d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                    <span class="fw-bold small" style="color: var(--color-ink); text-transform: uppercase; letter-spacing: 0.5px;">Chi tiết quan hệ</span>
+                    <button type="button" class="btn-pen-outline btn-sm" id="btnCloseEdgePanel" aria-label="Đóng bảng thông tin" style="padding: 2px 10px; font-size: 0.82rem;">
+                        ✕ Đóng
+                    </button>
+                </div>
+
+                <div id="edgePanelLoading" class="text-center py-4" style="display: none;">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                    <div class="small text-muted mt-2">Đang tải thông tin quan hệ...</div>
+                </div>
+
+                <div id="edgePanelError" class="alert alert-danger p-2 small mb-0" style="display: none;">
+                    <div class="mb-2" id="edgePanelErrorMsg">Không tải được thông tin quan hệ này.</div>
+                    <button type="button" class="btn btn-sm btn-outline-danger" id="btnRetryEdgeDetail">Thử lại</button>
+                </div>
+
+                <div id="edgePanelContent" style="display: none;">
+                    <!-- 1. Tiêu đề: Tên hai hình -->
+                    <h3 id="panelEdgeTitle" class="mb-1" style="font-size: 1.35rem; color: var(--color-ink); font-family: var(--font-hand);"></h3>
+
+                    <!-- 2. Quan hệ: Hình con là trường hợp đặc biệt của Hình cha -->
+                    <p id="panelEdgeRelation" class="small mb-1" style="color: var(--color-pencil); line-height: 1.5;"></p>
+                    <div class="small text-muted mb-3" id="panelEdgeRoleBadge" style="font-size: 0.8rem;"></div>
+
+                    <!-- 3. Thêm điều kiện: Khối nổi bật tô dạ quang -->
+                    <div class="p-2 px-3 mb-3" style="background-color: #FFF9DB; border-left: 4px solid #FFE66D; border-radius: 4px;">
+                        <div class="small text-muted mb-1" style="font-weight: 600;">Thêm điều kiện:</div>
+                        <div id="panelEdgeFormula" style="font-size: 0.95rem; color: var(--color-ink); font-weight: 500; line-height: 1.5;"></div>
+                    </div>
+
+                    <!-- 4. Vì sao có quan hệ cha - con & Định nghĩa hai hình -->
+                    <div class="mb-3" id="panelSectionReason">
+                        <div class="fw-bold small mb-1" style="color: var(--color-ink);">Vì sao có quan hệ cha–con:</div>
+                        <p id="panelEdgeReasonText" class="small mb-2" style="line-height: 1.55; color: var(--color-pencil); background: #FAFBFD; padding: 8px 10px; border-radius: 4px; border: 1px dashed var(--color-grid);"></p>
+
+                        <div class="d-flex flex-column gap-2 mt-2">
+                            <div id="panelBoxDefChild" class="p-2" style="background: #FAFCFD; border: 1px solid var(--color-grid); border-radius: 4px;">
+                                <strong class="d-block small mb-1" style="color: var(--color-ink);" id="panelTitleDefChild">Định nghĩa hình con:</strong>
+                                <div class="small text-muted" id="panelTextDefChild" style="line-height: 1.45;"></div>
+                            </div>
+                            <div id="panelBoxDefParent" class="p-2" style="background: #FAFCFD; border: 1px solid var(--color-grid); border-radius: 4px;">
+                                <strong class="d-block small mb-1" style="color: var(--color-ink);" id="panelTitleDefParent">Định nghĩa hình cha:</strong>
+                                <div class="small text-muted" id="panelTextDefParent" style="line-height: 1.45;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 5. Tính chất thừa hưởng -->
+                    <div class="mb-3" id="panelSectionProps">
+                        <div class="fw-bold small mb-1 d-flex justify-content-between align-items-center" style="color: var(--color-ink);">
+                            <span>Tính chất thừa hưởng:</span>
+                            <span class="badge" style="background: var(--color-grid); color: var(--color-ink);" id="panelPropsCountBadge">0</span>
+                        </div>
+                        <ul class="list-unstyled mb-1 small" id="panelPropsList" style="padding-left: 0;"></ul>
+                        <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none mt-1" id="btnToggleProps" style="font-size: 0.82rem; color: var(--color-ink); display: none;">
+                            Xem thêm tính chất &darr;
+                        </button>
+                    </div>
+
+                    <!-- 6. Hành động -->
+                    <div class="d-flex flex-column gap-2 pt-2 border-top">
+                        <a href="#" id="btnPanelChildLesson" class="btn-pen-outline btn-sm text-center" style="font-size: 0.85rem;">Mở bài học hình con</a>
+                        <a href="#" id="btnPanelParentLesson" class="btn-pen-outline btn-sm text-center" style="font-size: 0.85rem;">Mở bài học hình cha</a>
+                        <a href="#" id="btnPanelCompare" class="btn-pen btn-sm text-center" style="font-size: 0.85rem; background-color: var(--color-ink); color: #fff;">So sánh hai hình này &rarr;</a>
+                    </div>
+                </div>
+            </aside>
+        </div>
 
         <!-- Chú thích (Legend) chuẩn mục 3.3 -->
         <div class="graph-legend d-flex flex-wrap align-items-center gap-2 gap-sm-3 p-2 px-3 mt-2 mb-2" style="background-color: var(--color-paper); border: 1px solid var(--color-grid); border-radius: 4px; font-size: 0.85rem;">
