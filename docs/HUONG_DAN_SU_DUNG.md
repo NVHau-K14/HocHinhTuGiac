@@ -149,6 +149,41 @@ Khi mở một hình (ví dụ: *Hình chữ nhật* tại `/shapes/hinh-chu-nha
 
 ---
 
+### 2.9. Xưởng vẽ hình học tương tác (`/lab` - Phiên bản v2.4)
+Tab **"Xưởng vẽ"** trên thanh điều hướng là phòng thí nghiệm hình học phẳng sống động, cho phép người học tự do kéo thả, biến đổi hình tứ giác và đối chiếu công thức trực tiếp trên trang vở học sinh:
+
+![Giao diện Xưởng vẽ trên Máy tính](screenshots/lab_stage5_desktop.png)
+
+1. **Bảng vẽ SVG tương tác & Bắt lưới (Snap-to-Grid):**
+   - **Lưới ô li 24px:** Tương ứng 1 ô = 1 cm trong hệ tọa độ toán học.
+   - **Tương tác đa dạng:** Kéo thả 4 đỉnh A, B, C, D bằng chuột, cảm ứng chạm trên điện thoại hoặc bàn phím (Tab để chọn đỉnh, phím mũi tên để di chuyển, Shift + mũi tên để nhảy 5 bước).
+   - **Bắt lưới thông minh:** Tùy chọn bước bắt lưới `1 ô (1 cm)`, `0.5 ô (0.5 cm)` hoặc `Tự do` (tắt hút).
+   - **Bảo toàn tính lồi:** Hệ thống tự động từ chối các vị trí làm tứ giác bị lõm hoặc tự cắt, rung nhẹ viền đỏ và hướng dẫn bằng tiếng Việt.
+
+2. **Hai chế độ làm việc linh hoạt:**
+   - **Theo hình mẫu (Parametric mode):** Các đỉnh gắn với các tay nắm chuyên biệt (tô màu vàng dạ quang `#FFE66D`). Kéo tay nắm sẽ giữ đúng loại hình học (ví dụ: kéo đỉnh C của hình chữ nhật để đổi chiều dài, chiều rộng). Có nút **"🔓 Mở khóa kéo tự do"** để chuyển sang kéo độc lập.
+   - **Tự do (Free mode):** 4 đỉnh kéo độc lập hoàn toàn. Hệ thống nhận dạng liên tục loại hình theo thời gian thực. Có nút **"🔒 Khóa về hình mẫu"** để quay về hình mẫu chuẩn.
+
+3. **Bốn tab ghi chép chuyên sâu:**
+   - **📏 Số đo:** Cập nhật tức thì độ dài 4 cạnh, độ dài 2 đường chéo, 4 góc trong, chu vi, diện tích và tọa độ giao điểm O. Cung cấp ô nhập số hai chiều (gõ tọa độ hoặc tham số cạnh để hình tự vẽ lại).
+   - **∑ Công thức:** Tự động lấy công thức từ cơ sở dữ liệu Neo4j. Hiển thị dưới dạng KaTeX đẹp mắt với đầy đủ: công thức gốc $\to$ bước thay số cụ thể $\to$ kết quả cuối cùng. Tự động kiểm chứng chéo với diện tích giải tích (hiển thị huy hiệu `✓ Khớp với diện tích tính từ tọa độ`).
+   - **🌿 Nhận dạng & Áp dụng điều kiện:**
+     - Xác định tên hình cụ thể nhất cùng chuỗi phả hệ kế thừa `IS_A`.
+     - Danh sách kiểm tra 6 tính chất hình học đúng/sai (`✓` / `✗`) theo thời gian thực.
+     - **Tính năng "Áp dụng điều kiện":** Liệt kê các hình con trực tiếp kèm nút **"Thử điều kiện này"** (ví dụ: từ Hình chữ nhật $\to$ Hình vuông). Bấm nút sẽ tự động biến đổi 4 đỉnh theo quy tắc SGK và thông báo rõ tính chất vừa được bổ sung.
+   - **🎯 Thử thách:**
+     - *Dạng 1 (Biến hình học):* Thử thách biến đổi hình cha thành hình con (ví dụ: Biến Hình bình hành thành Hình thoi). Kèm nút "💡 Gợi ý" và hệ thống chấm điểm tự động.
+     - *Dạng 2 (Đạt kích thước P, S):* Thử thách điều chỉnh hình đạt đúng chu vi và diện tích cho trước với dung sai $\pm 0.02\text{ cm}$.
+
+4. **Lớp hiển thị & Xuất tài liệu học tập:**
+   - Tùy chọn bật/tắt linh hoạt các lớp: **Cạnh**, **Góc**, **Đường chéo**, **Ký hiệu tự động** (góc vuông, dấu song song `>`, `>>`, bằng nhau) và **Trục đối xứng** (nét đứt tím thanh lịch).
+   - Nút **"🔗 Sao chép liên kết"**: Lưu toàn bộ tọa độ và trạng thái lên thanh địa chỉ URL để chia sẻ bài học.
+   - Nút **"📥 Tải SVG"** và **"🖼️ Tải PNG"**: Xuất file ảnh chất lượng cao để in ấn hoặc nộp bài tập về nhà.
+
+![Giao diện Xưởng vẽ trên Di động 360px](screenshots/lab_stage5_mobile.png)
+
+---
+
 ## 3. Lời khuyên giúp học tốt môn Hình học cùng Tứ Giác Học
 1. **Đi từ tổng quát đến đặc biệt:** Bắt đầu từ *Tứ giác*, chuyển dần xuống *Hình thang*, *Hình bình hành*, và đích đến là *Hình vuông*.
 2. **Quan sát tính kế thừa:** Mỗi khi học một hình mới, hãy chú ý xem hình đó kế thừa những tính chất gì từ hình cha để không cần học vẹt.

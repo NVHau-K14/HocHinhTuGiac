@@ -13,9 +13,15 @@
                 Kéo thả đỉnh tứ giác, khám phá điều kiện biến hình và đối chiếu công thức trực tiếp trên trang vở
             </p>
         </div>
-        <div class="d-flex align-items-center gap-2">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
             <button type="button" class="btn-pen-outline" id="labBtnShare" title="Sao chép liên kết chia sẻ hình hiện tại">
                 🔗 Sao chép liên kết
+            </button>
+            <button type="button" class="btn-pen-outline" id="labBtnDownloadSvg" title="Tải hình vẽ dưới dạng vector SVG">
+                📥 Tải SVG
+            </button>
+            <button type="button" class="btn-pen-outline" id="labBtnDownloadPng" title="Tải hình vẽ dưới dạng ảnh PNG">
+                🖼️ Tải PNG
             </button>
         </div>
     </div>
@@ -84,6 +90,10 @@
                     <input type="checkbox" id="labLayerMarks" checked />
                     <span>Ký hiệu</span>
                 </label>
+                <label class="lab-control-item" title="Hiển thị các trục đối xứng thực tế của hình">
+                    <input type="checkbox" id="labLayerAxesSym" />
+                    <span>Trục đối xứng</span>
+                </label>
             </div>
 
             <!-- Các nút thao tác lịch sử -->
@@ -141,6 +151,8 @@
                         <g id="labDiagonalsGroup"></g>
                         <!-- Lớp các cạnh chính của tứ giác -->
                         <g id="labEdgesGroup"></g>
+                        <!-- Lớp trục đối xứng của hình -->
+                        <g id="labSymmetryGroup"></g>
                         <!-- Lớp ký hiệu hình học (song song, bằng nhau, góc vuông, cung góc) -->
                         <g id="labMarksGroup"></g>
                         <!-- Lớp số đo độ dài cạnh và góc -->

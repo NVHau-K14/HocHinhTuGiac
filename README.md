@@ -15,6 +15,7 @@ Dự án này ứng dụng **Cơ sở dữ liệu đồ thị Neo4j (Graph Datab
 4. **Hệ thống Luyện tập & Quiz thông minh:** 40 câu hỏi trắc nghiệm chia theo từng hình và bài thi tổng hợp 10 câu chấm điểm bảo mật tại Backend, hiển thị kết quả với con dấu điểm đỏ viết tay của giáo viên.
 5. **So sánh hình & Tra cứu:** Tìm tổ tiên chung gần nhất (LCA), đối chiếu tính chất chung / riêng và tìm kiếm tri thức tức thì.
 6. **Phong cách thiết kế trang vở học sinh:** Nền giấy ô li 24px, lề kẻ đỏ, typography viết tay (Patrick Hand) kết hợp hiện đại (Be Vietnam Pro), công thức toán học KaTeX mượt mà.
+7. **Xưởng vẽ hình học tương tác (v2.4 - `/lab`):** Phòng thí nghiệm hình học tương tác kéo thả 4 đỉnh A, B, C, D, bắt lưới 24px, nhận dạng phả hệ thời gian thực, đối chiếu công thức KaTeX thay số & kiểm chứng chéo diện tích, áp dụng điều kiện chuyển hóa hình và giải thử thách hình học.
 
 ---
 
@@ -22,8 +23,8 @@ Dự án này ứng dụng **Cơ sở dữ liệu đồ thị Neo4j (Graph Datab
 
 - **Backend:** C# / .NET 9.0 (ASP.NET Core MVC), `Neo4j.Driver` 6.3.0, `Microsoft.Extensions.Caching.Memory`.
 - **Database:** Neo4j Graph Database 5.x (Cypher Query Language).
-- **Frontend:** Razor Pages (HTML5, Vanilla CSS Design System), KaTeX (kí hiệu toán LaTeX), `vis-network` (vẽ đồ thị tương tác), SVG thủ công có hiệu ứng nét bút vẽ (`stroke-dashoffset`).
-- **Scripts kiểm thử & Seed:** Python 3 (sử dụng thư viện `neo4j` official driver để kiểm chứng toán học và tính toàn vẹn).
+- **Frontend:** Razor Pages (HTML5, Vanilla CSS Design System), KaTeX (kí hiệu toán LaTeX), `vis-network` (vẽ đồ thị tương tác), SVG thủ công có hiệu ứng nét bút vẽ (`stroke-dashoffset`), Modular Interactive Canvas Engine (Geometry, Classify, Presets, Formulas, Transform, UrlSync).
+- **Scripts kiểm thử & Seed:** Python 3 (neo4j official driver, verify integrity), Node.js Test Runner (`node --test tests/lab/*.test.js`).
 
 ---
 
@@ -46,16 +47,18 @@ HocHinhTuGiac/
 ├── docs/                       # Tài liệu hướng dẫn & thiết kế
 │   ├── design-plan.md          # Đặc tả design tokens, màu họ hình, lưới ô li
 │   ├── HUONG_DAN_SU_DUNG.md    # Cẩm nang hướng dẫn sử dụng chi tiết cho người học
-│   └── test-cases.md           # Danh sách 13 kịch bản kiểm thử (Test Cases)
+│   └── test-cases.md           # Danh sách 29 kịch bản kiểm thử (Test Cases TC-01 đến TC-29)
+├── tests/                      # Bộ kiểm thử tự động Node.js Runner
+│   └── lab/                    # 8 test suites kiểm thử toán học & mô-đun Xưởng vẽ
 └── src/
     └── QuadWeb/                # Ứng dụng ASP.NET Core MVC
-        ├── Controllers/        # Home, Shapes, Practice, Quiz, Leaderboard, Search, Compare, GraphApi
-        ├── Models/             # Shape, Quiz, Learner, Search, Compare, Graph DTOs
+        ├── Controllers/        # Home, Shapes, Practice, Quiz, Leaderboard, Search, Compare, GraphApi, Lab
+        ├── Models/             # Shape, Quiz, Learner, Search, Compare, Graph, Lab DTOs
         ├── Repositories/       # IShapeRepository, IQuestionRepository, ILearnerRepository
         ├── Services/           # Neo4jDriverService, ShapeService, QuizService, LearnerService
         ├── Middleware/         # LearnerMiddleware (Cookie ẩn danh), Neo4jExceptionMiddleware
         ├── Views/              # Giao diện Razor Pages thiết kế sổ tay học sinh
-        ├── wwwroot/            # CSS trang vở ô li (site.css), JS vis-network (graph.js)
+        ├── wwwroot/            # CSS trang vở ô li (site.css), JS vis-network, JS lab (Geometry, Classify, Presets...)
         ├── appsettings.json    # Cấu hình môi trường runtime
         └── Program.cs          # Đăng ký Dependency Injection và HTTP Pipeline
 ```

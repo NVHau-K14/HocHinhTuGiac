@@ -46,7 +46,8 @@
             sides: true,
             angles: true,
             diagonals: true,
-            marks: true
+            marks: true,
+            axessym: false
         },
         zoom: 1,
         pan: { x: 120, y: 380 }, // Gốc tọa độ dưới-trái
@@ -95,6 +96,22 @@
         await loadLabMeta();
         renderScene();
         updateAllPanels();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const tabParam = urlParams.get('tab');
+        if (tabParam) {
+            const tabMap = {
+                'measurements': 'tabBtnMeasurements',
+                'formulas': 'tabBtnFormulas',
+                'classify': 'tabBtnClassify',
+                'challenges': 'tabBtnChallenges'
+            };
+            const btnId = tabMap[tabParam.toLowerCase()];
+            if (btnId) {
+                const targetBtn = document.getElementById(btnId);
+                if (targetBtn) targetBtn.click();
+            }
+        }
     }
 
     /**
@@ -246,6 +263,15 @@
 
             if (state.layers.sides) {
                 renderSideMeasurements(edgesGroup, [A, B, C, D], [svgA, svgB, svgC, svgD]);
+            }
+        }
+
+        // 2.5 Lớp Trục đối xứng
+        const symGroup = document.getElementById('labSymmetryGroup');
+        if (symGroup) {
+            symGroup.innerHTML = '';
+            if (state.layers.axessym) {
+                renderSymmetryAxes(symGroup, [A, B, C, D], [svgA, svgB, svgC, svgD]);
             }
         }
 
@@ -774,21 +800,26 @@
         if (state.currentClassification && state.currentClassification.mostSpecific !== res.mostSpecific) {
             const diff = Classify.getConditionDiff(state.currentClassification.mostSpecific, res.mostSpecific, isaData);
             if (diff && !state.drag.active) {
-                const alertMsg = document.getElementById('labAlertMessage');
-                const alertBanner = document.getElementById('labAlertBanner');
-                if (alertMsg) alertMsg.textContent = diff.message;
-                if (alertBanner) {
-                    alertBanner.className = 'lab-alert-banner highlight-info';
-                }
+                setAlertMessage(diff.message, true);
             }
         }
         state.currentClassification = res;
+    }
+
+    function setAlertMessage(msg, isSuccess = false) {
+        const alertMsg = document.getElementById('labAlertMessage');
+        const alertBanner = document.getElementById('labAlertBanner');
+        if (alertMsg) alertMsg.textContent = msg;
+        if (alertBanner) {
+            alertBanner.className = isSuccess ? 'lab-alert-banner highlight-info' : 'lab-alert-banner';
+        }
     }
 
     function updateAllPanels() {
         updateMeasurementsPanel();
         updateFormulasPanel();
         updateClassifyPanel();
+        updateChallengesPanel();
     }
 
     /**
@@ -1172,8 +1203,502 @@
                         <span>Hai đường chéo vuông góc với nhau (AC ⊥ BD)</span>
                     </li>
                 </ul>
+
+                ${renderConditionBoxHtml(specificSlug, curName)}
             </div>
         `;
+
+        container.querySelectorAll('.lab-btn-apply-cond').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const from = btn.getAttribute('data-from');
+                const to = btn.getAttribute('data-to');
+                applyCondition(from, to);
+            });
+        });
+    }
+
+    function renderConditionBoxHtml(specificSlug, curName) {
+        if (!Transform?.TRANSFORM_RULES) return '';
+        const availableRules = [];
+        Object.keys(Transform.TRANSFORM_RULES).forEach(key => {
+            const prefix = `${specificSlug}->`;
+            if (key.startsWith(prefix)) {
+                const childSlug = key.slice(prefix.length);
+                let condText = '';
+                if (state.meta?.isa) {
+                    const rel = state.meta.isa.find(r => r.den === specificSlug && r.tu === childSlug);
+                    if (rel) condText = rel.conditionShort || rel.condition;
+                }
+                if (!condText) {
+                    const fallbackConds = {
+                        'hinh-thang': 'Có ít nhất một cặp cạnh đối song song',
+                        'hinh-dieu': 'Có hai cặp cạnh kề bằng nhau',
+                        'hinh-thang-can': 'Hai góc kề một đáy bằng nhau (hoặc hai cạnh bên bằng nhau)',
+                        'hinh-binh-hanh': 'Hai cặp cạnh đối song song',
+                        'hinh-chu-nhat': 'Có một góc vuông (90°)',
+                        'hinh-thoi': 'Bốn cạnh bằng nhau hoặc hai đường chéo vuông góc',
+                        'hinh-vuong': specificSlug === 'hinh-chu-nhat' ? 'Hai cạnh kề bằng nhau' : 'Có một góc vuông (90°)'
+                    };
+                    condText = fallbackConds[childSlug] || 'Thỏa mãn thêm điều kiện hình học đặc thù';
+                }
+                availableRules.push({
+                    from: specificSlug,
+                    to: childSlug,
+                    name: Classify?.SHAPE_NAMES[childSlug] || childSlug,
+                    condition: condText
+                });
+            }
+        });
+
+        if (availableRules.length === 0) return '';
+
+        return `
+            <div class="lab-condition-box">
+                <h5 style="font-size: 1.15rem; color: var(--color-ink); margin-bottom: 6px;">
+                    ⚡ Chuyển hóa hình ("Áp dụng điều kiện")
+                </h5>
+                <p class="small text-muted mb-2">Thêm điều kiện hình học để biến ${curName} thành hình đặc biệt hơn:</p>
+                <div>
+                    ${availableRules.map(r => `
+                        <div class="lab-condition-card">
+                            <div class="lab-condition-info">
+                                <div class="lab-condition-target-name">→ ${r.name}</div>
+                                <div class="lab-condition-rule">Điều kiện: ${r.condition}</div>
+                            </div>
+                            <button type="button" class="lab-btn-apply-cond" data-from="${r.from}" data-to="${r.to}">
+                                Thử điều kiện này
+                            </button>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Thực hiện chuyển hóa hình theo quy tắc áp dụng điều kiện (Mục 6.6)
+     */
+    function applyCondition(fromSlug, toSlug) {
+        if (!Transform) return;
+        const [A, B, C, D] = state.vertices;
+        const newVerts = Transform.applyConditionTransform(fromSlug, toSlug, A, B, C, D);
+        if (!newVerts) {
+            alert('Không thể áp dụng điều kiện này với vị trí các đỉnh hiện tại (hình sẽ bị lõm hoặc tự cắt).');
+            return;
+        }
+
+        pushHistory();
+        state.vertices = newVerts;
+        state.mode = 'free';
+        state.activePreset = toSlug;
+        syncControlsWithState();
+        renderScene();
+        updateAllPanels();
+        syncUrl();
+
+        const isaData = state.meta?.isa || Classify?.DEFAULT_ISA;
+        const diff = Classify?.getConditionDiff(fromSlug, toSlug, isaData);
+        const targetName = Classify?.SHAPE_NAMES[toSlug] || toSlug;
+        if (diff) {
+            setAlertMessage(diff.message, true);
+        } else {
+            setAlertMessage(`Đã thêm điều kiện để hình trở thành ${targetName}.`, true);
+        }
+    }
+
+    /**
+     * Vẽ lớp trục đối xứng thực tế của hình (Mục 7.7)
+     */
+    function renderSymmetryAxes(parent, mathPts, svgPts) {
+        if (!Geometry) return;
+        const [A, B, C, D] = mathPts;
+        const curSlug = state.currentClassification?.mostSpecific || state.activePreset;
+        const isSquare = curSlug === 'hinh-vuong';
+        const isRect = curSlug === 'hinh-chu-nhat';
+        const isRhombus = curSlug === 'hinh-thoi';
+        const isIsoscelesTrapezoid = curSlug === 'hinh-thang-can';
+        const isKite = curSlug === 'hinh-dieu';
+
+        const lines = [];
+
+        if (isSquare) {
+            lines.push({ p1: A, p2: C });
+            lines.push({ p1: B, p2: D });
+            lines.push({ p1: Geometry.midpoint(A, B), p2: Geometry.midpoint(C, D) });
+            lines.push({ p1: Geometry.midpoint(B, C), p2: Geometry.midpoint(D, A) });
+        } else if (isRect) {
+            lines.push({ p1: Geometry.midpoint(A, B), p2: Geometry.midpoint(C, D) });
+            lines.push({ p1: Geometry.midpoint(B, C), p2: Geometry.midpoint(D, A) });
+        } else if (isRhombus) {
+            lines.push({ p1: A, p2: C });
+            lines.push({ p1: B, p2: D });
+        } else if (isIsoscelesTrapezoid) {
+            const vAB = Geometry.vector(A, B);
+            const vCD = Geometry.vector(C, D);
+            if (Geometry.areParallel(vAB, vCD)) {
+                lines.push({ p1: Geometry.midpoint(A, B), p2: Geometry.midpoint(C, D) });
+            } else {
+                lines.push({ p1: Geometry.midpoint(B, C), p2: Geometry.midpoint(D, A) });
+            }
+        } else if (isKite) {
+            const dAB = Geometry.distance(A, B);
+            const dAD = Geometry.distance(A, D);
+            if (Geometry.approxEqual(dAB, dAD)) {
+                lines.push({ p1: A, p2: C });
+            } else {
+                lines.push({ p1: B, p2: D });
+            }
+        }
+
+        lines.forEach((line, idx) => {
+            const v = Geometry.vector(line.p1, line.p2);
+            const u = Geometry.normalize(v);
+            const ext1 = { x: line.p1.x - 1.5 * u.x, y: line.p1.y - 1.5 * u.y };
+            const ext2 = { x: line.p2.x + 1.5 * u.x, y: line.p2.y + 1.5 * u.y };
+            const svg1 = mathToSvg(ext1.x, ext1.y);
+            const svg2 = mathToSvg(ext2.x, ext2.y);
+
+            const svgLine = createLine(svg1, svg2, '#8E24AA', '1.6', '6,4');
+            svgLine.setAttribute('class', 'lab-axis-sym');
+            parent.appendChild(svgLine);
+
+            if (idx === 0) {
+                addSvgText(parent, svg2.x + 6, svg2.y + 3, 'Trục đ.xứng', '#8E24AA', '10px', 'start', 'normal');
+            }
+        });
+    }
+
+    // Danh sách các thử thách hình học (Mục 7.5)
+    const CHALLENGES = [
+        {
+            id: 'ch_hbh_thoi',
+            type: 1,
+            title: 'Biến Hình bình hành thành Hình thoi',
+            parentSlug: 'hinh-binh-hanh',
+            targetSlug: 'hinh-thoi',
+            desc: 'Kéo các đỉnh của Hình bình hành sao cho tứ giác trở thành Hình thoi.',
+            hint: 'Hình thoi có bốn cạnh bằng nhau hoặc hai đường chéo vuông góc với nhau (AC ⊥ BD).'
+        },
+        {
+            id: 'ch_hcn_vuong',
+            type: 1,
+            title: 'Biến Hình chữ nhật thành Hình vuông',
+            parentSlug: 'hinh-chu-nhat',
+            targetSlug: 'hinh-vuong',
+            desc: 'Kéo các đỉnh của Hình chữ nhật sao cho tứ giác trở thành Hình vuông.',
+            hint: 'Hình vuông là hình chữ nhật có hai cạnh kề bằng nhau (AB = BC) hoặc hai đường chéo vuông góc.'
+        },
+        {
+            id: 'ch_ht_hbh',
+            type: 1,
+            title: 'Biến Hình thang thành Hình bình hành',
+            parentSlug: 'hinh-thang',
+            targetSlug: 'hinh-binh-hanh',
+            desc: 'Kéo các đỉnh của Hình thang sao cho tứ giác trở thành Hình bình hành.',
+            hint: 'Hình bình hành có hai cặp cạnh đối song song (AB ∥ CD và AD ∥ BC).'
+        },
+        {
+            id: 'ch_ht_htc',
+            type: 1,
+            title: 'Biến Hình thang thành Hình thang cân',
+            parentSlug: 'hinh-thang',
+            targetSlug: 'hinh-thang-can',
+            desc: 'Kéo các đỉnh của Hình thang sao cho tứ giác trở thành Hình thang cân.',
+            hint: 'Hình thang cân có hai góc kề một đáy bằng nhau hoặc hai đường chéo bằng nhau (AC = BD).'
+        },
+        {
+            id: 'ch_thoi_vuong',
+            type: 1,
+            title: 'Biến Hình thoi thành Hình vuông',
+            parentSlug: 'hinh-thoi',
+            targetSlug: 'hinh-vuong',
+            desc: 'Kéo các đỉnh của Hình thoi sao cho tứ giác trở thành Hình vuông.',
+            hint: 'Hình vuông là hình thoi có một góc vuông (90°) hoặc hai đường chéo bằng nhau.'
+        },
+        {
+            id: 'ch_hcn_ps',
+            type: 2,
+            title: 'Hình chữ nhật: Chu vi P = 20 cm, Diện tích S = 24 cm²',
+            parentSlug: 'hinh-chu-nhat',
+            desc: 'Điều chỉnh kích thước hình chữ nhật để đạt đúng Chu vi P = 20 cm và Diện tích S = 24 cm².',
+            targetP: 20,
+            targetS: 24,
+            hint: 'Tìm hai cạnh a, b sao cho 2(a + b) = 20 và a · b = 24 (ví dụ a = 6 cm, b = 4 cm hoặc ngược lại).'
+        },
+        {
+            id: 'ch_vuong_s',
+            type: 2,
+            title: 'Hình vuông: Diện tích S = 25 cm²',
+            parentSlug: 'hinh-vuong',
+            desc: 'Điều chỉnh cạnh hình vuông để đạt Diện tích S = 25 cm².',
+            targetS: 25,
+            hint: 'Diện tích hình vuông là S = a². Vì vậy độ dài cạnh cần đạt là a = 5 cm.'
+        },
+        {
+            id: 'ch_thoi_s',
+            type: 2,
+            title: 'Hình thoi: Diện tích S = 20 cm²',
+            parentSlug: 'hinh-thoi',
+            desc: 'Điều chỉnh hình thoi để đạt Diện tích S = 20 cm².',
+            targetS: 20,
+            hint: 'Diện tích hình thoi tính theo hai đường chéo S = (d₁ · d₂)/2. Có thể chọn d₁ = 8 cm, d₂ = 5 cm.'
+        },
+        {
+            id: 'ch_ht_sh',
+            type: 2,
+            title: 'Hình thang: Diện tích S = 18 cm², Chiều cao h = 3 cm',
+            parentSlug: 'hinh-thang',
+            desc: 'Điều chỉnh hai đáy và chiều cao hình thang để đạt S = 18 cm² với h = 3 cm.',
+            targetS: 18,
+            targetH: 3,
+            hint: 'Diện tích S = (a + b)·h/2. Với h = 3 và S = 18, tổng hai đáy cần là a + b = 12 cm (ví dụ a = 8 cm, b = 4 cm).'
+        }
+    ];
+
+    let currentChallengeIndex = 0;
+    let challengeHintVisible = false;
+
+    /**
+     * Cập nhật panel tab "Thử thách" (Mục 7.5)
+     */
+    function updateChallengesPanel() {
+        const container = document.getElementById('labChallengesContent');
+        if (!container || !Geometry || !Classify) return;
+
+        const ch = CHALLENGES[currentChallengeIndex];
+        const [A, B, C, D] = state.vertices;
+        const m = Geometry.computeMeasurements(A, B, C, D);
+        const curSpecific = state.currentClassification?.mostSpecific || 'tu-giac';
+        const matchingSlugs = state.currentClassification?.matchingSlugs || [];
+
+        let passed = false;
+        let reason = '';
+
+        if (ch.type === 1) {
+            if (matchingSlugs.includes(ch.targetSlug)) {
+                passed = true;
+                reason = `Đúng ✓ Hình hiện tại đã trở thành ${Classify.SHAPE_NAMES[ch.targetSlug]}. Chúc mừng bạn đã hoàn thành thử thách!`;
+            } else {
+                passed = false;
+                reason = `Chưa đúng ✗ Hình hiện tại đang là ${Classify.SHAPE_NAMES[curSpecific] || 'Tứ giác'}. Mục tiêu cần đạt: ${Classify.SHAPE_NAMES[ch.targetSlug]}.`;
+            }
+        } else {
+            const tol = 0.02;
+            let checkP = true;
+            let checkS = true;
+            let checkH = true;
+
+            if (ch.targetP !== undefined) {
+                checkP = Math.abs(m.perimeter - ch.targetP) <= tol;
+            }
+            if (ch.targetS !== undefined) {
+                checkS = Math.abs(m.area - ch.targetS) <= tol;
+            }
+            if (ch.targetH !== undefined) {
+                const vAB = Geometry.vector(A, B);
+                const vCD = Geometry.vector(C, D);
+                let actualH = 0;
+                if (Geometry.areParallel(vAB, vCD)) {
+                    actualH = Geometry.pointToLineDistance(C, A, B);
+                }
+                checkH = Math.abs(actualH - ch.targetH) <= tol;
+            }
+
+            if (checkP && checkS && checkH) {
+                passed = true;
+                reason = `Đúng ✓ Đã đạt chính xác các kích thước mục tiêu! (P = ${Geometry.formatNumberVi(m.perimeter)} cm, S = ${Geometry.formatNumberVi(m.area)} cm²)`;
+            } else {
+                passed = false;
+                const parts = [];
+                if (ch.targetP !== undefined) {
+                    parts.push(`Chu vi hiện là ${Geometry.formatNumberVi(m.perimeter)} cm (cần ${ch.targetP} cm)`);
+                }
+                if (ch.targetS !== undefined) {
+                    parts.push(`Diện tích hiện là ${Geometry.formatNumberVi(m.area)} cm² (cần ${ch.targetS} cm²)`);
+                }
+                reason = `Chưa đúng ✗ ${parts.join('; ')}.`;
+            }
+        }
+
+        container.innerHTML = `
+            <div class="lab-challenge-container">
+                <div class="lab-challenge-card">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="lab-challenge-badge ${ch.type === 2 ? 'type2' : ''}">
+                            ${ch.type === 1 ? '🎯 Biến hình học' : '📏 Kích thước P & S'} (Thử thách ${currentChallengeIndex + 1}/${CHALLENGES.length})
+                        </span>
+                        <span class="small text-muted">Chỉ lưu trong phiên</span>
+                    </div>
+
+                    <h4 class="lab-challenge-title">${ch.title}</h4>
+                    <p class="lab-challenge-desc">${ch.desc}</p>
+
+                    <div class="lab-challenge-target-box">
+                        <strong>Mục tiêu:</strong> ${ch.type === 1 ? `Biến ${Classify.SHAPE_NAMES[ch.parentSlug]} thành <strong>${Classify.SHAPE_NAMES[ch.targetSlug]}</strong>` : `Đạt ${ch.targetP ? `P = ${ch.targetP} cm, ` : ''}S = ${ch.targetS} cm²`}
+                    </div>
+
+                    <div class="lab-challenge-feedback ${passed ? 'pass' : 'pending'}">
+                        <span>${passed ? '🎉' : '⏳'}</span>
+                        <div>${reason}</div>
+                    </div>
+
+                    ${challengeHintVisible ? `
+                        <div class="lab-hint-box">
+                            <strong>💡 Gợi ý:</strong> ${ch.hint}
+                        </div>
+                    ` : ''}
+
+                    <div class="lab-challenge-actions">
+                        <button type="button" class="btn-pen" id="labBtnStartChallenge">
+                            🚀 Bắt đầu thử thách này
+                        </button>
+                        <button type="button" class="btn-pen-outline" id="labBtnToggleHint">
+                            ${challengeHintVisible ? 'Ẩn gợi ý' : '💡 Gợi ý'}
+                        </button>
+                        <button type="button" class="btn-pen-outline" id="labBtnResetChallenge">
+                            ↺ Làm lại
+                        </button>
+                        <button type="button" class="btn-pen-outline" id="labBtnNextChallenge">
+                            🎲 Thử thách khác
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const btnStart = document.getElementById('labBtnStartChallenge');
+        if (btnStart) {
+            btnStart.addEventListener('click', () => {
+                applyPreset(ch.parentSlug);
+                setAlertMessage(`Đã khởi tạo ${Classify.SHAPE_NAMES[ch.parentSlug]} để thực hiện thử thách "${ch.title}".`);
+            });
+        }
+
+        const btnHint = document.getElementById('labBtnToggleHint');
+        if (btnHint) {
+            btnHint.addEventListener('click', () => {
+                challengeHintVisible = !challengeHintVisible;
+                updateChallengesPanel();
+            });
+        }
+
+        const btnReset = document.getElementById('labBtnResetChallenge');
+        if (btnReset) {
+            btnReset.addEventListener('click', () => {
+                applyPreset(ch.parentSlug);
+            });
+        }
+
+        const btnNext = document.getElementById('labBtnNextChallenge');
+        if (btnNext) {
+            btnNext.addEventListener('click', () => {
+                currentChallengeIndex = (currentChallengeIndex + 1) % CHALLENGES.length;
+                challengeHintVisible = false;
+                applyPreset(CHALLENGES[currentChallengeIndex].parentSlug);
+                updateChallengesPanel();
+            });
+        }
+    }
+
+    /**
+     * Tải hình vẽ SVG (Mục 7.6)
+     */
+    function downloadSvg() {
+        const svg = document.getElementById('labSvgCanvas');
+        if (!svg) return;
+        const clone = svg.cloneNode(true);
+        clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+        clone.setAttribute('width', '720');
+        clone.setAttribute('height', '480');
+
+        const styleElem = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+        styleElem.textContent = `
+            text { font-family: 'Be Vietnam Pro', sans-serif; }
+            .lab-axis-sym { stroke: #8E24AA; stroke-width: 1.6; stroke-dasharray: 6, 4; }
+            .lab-axis-label { fill: #8E24AA; font-size: 10px; }
+        `;
+        let defs = clone.querySelector('defs');
+        if (!defs) {
+            defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+            clone.insertBefore(defs, clone.firstChild);
+        }
+        defs.appendChild(styleElem);
+
+        const serializer = new XMLSerializer();
+        let source = serializer.serializeToString(clone);
+        if (!source.match(/^<svg[^>]+xmlns="http\:\/\/www\.w3\.org\/2000\/svg"/)) {
+            source = source.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
+        }
+
+        const blob = new Blob([source], { type: 'image/svg+xml;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `xuong-ve-${state.activePreset}-${Date.now()}.svg`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    /**
+     * Tải hình vẽ PNG nét cao (Mục 7.6)
+     */
+    function downloadPng() {
+        const svg = document.getElementById('labSvgCanvas');
+        if (!svg) return;
+        const clone = svg.cloneNode(true);
+        clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+        clone.setAttribute('width', '1440');
+        clone.setAttribute('height', '960');
+
+        const styleElem = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+        styleElem.textContent = `
+            text { font-family: 'Be Vietnam Pro', sans-serif; }
+            .lab-axis-sym { stroke: #8E24AA; stroke-width: 1.6; stroke-dasharray: 6, 4; }
+            .lab-axis-label { fill: #8E24AA; font-size: 10px; }
+        `;
+        let defs = clone.querySelector('defs');
+        if (!defs) {
+            defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+            clone.insertBefore(defs, clone.firstChild);
+        }
+        defs.appendChild(styleElem);
+
+        const serializer = new XMLSerializer();
+        const source = serializer.serializeToString(clone);
+        const blob = new Blob([source], { type: 'image/svg+xml;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1440;
+            canvas.height = 960;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#FFFDF8';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            URL.revokeObjectURL(url);
+
+            canvas.toBlob((pngBlob) => {
+                if (!pngBlob) return;
+                const pngUrl = URL.createObjectURL(pngBlob);
+                const a = document.createElement('a');
+                a.href = pngUrl;
+                a.download = `xuong-ve-${state.activePreset}-${Date.now()}.png`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(pngUrl);
+            }, 'image/png');
+        };
+        img.onerror = (err) => {
+            console.error('Lỗi xuất PNG:', err);
+            alert('Không thể tạo ảnh PNG. Bạn có thể sử dụng nút Tải SVG để thay thế.');
+            URL.revokeObjectURL(url);
+        };
+        img.src = url;
     }
 
     function syncUrl() {
@@ -1234,7 +1759,7 @@
             });
         }
 
-        ['Sides', 'Angles', 'Diagonals', 'Marks'].forEach(layer => {
+        ['Sides', 'Angles', 'Diagonals', 'Marks', 'AxesSym'].forEach(layer => {
             const chk = document.getElementById(`labLayer${layer}`);
             if (chk) {
                 chk.addEventListener('change', (e) => {
@@ -1268,6 +1793,12 @@
                 });
             });
         }
+
+        const btnSvg = document.getElementById('labBtnDownloadSvg');
+        if (btnSvg) btnSvg.addEventListener('click', downloadSvg);
+
+        const btnPng = document.getElementById('labBtnDownloadPng');
+        if (btnPng) btnPng.addEventListener('click', downloadPng);
 
         const btnZoomIn = document.getElementById('labBtnZoomIn');
         const btnZoomOut = document.getElementById('labBtnZoomOut');
@@ -1310,9 +1841,10 @@
                 const activePane = document.getElementById(targetTab);
                 if (activePane) activePane.classList.add('active');
 
-                // Render lại công thức/nhận dạng khi mở tab
+                // Render lại công thức/nhận dạng/thử thách khi mở tab
                 if (targetTab === 'tabFormulas') updateFormulasPanel();
                 if (targetTab === 'tabClassify') updateClassifyPanel();
+                if (targetTab === 'tabChallenges') updateChallengesPanel();
             });
         });
     }
