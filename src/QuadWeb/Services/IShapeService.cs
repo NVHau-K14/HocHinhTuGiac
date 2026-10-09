@@ -14,4 +14,5 @@ public interface IShapeService
     Task<List<ShapeSpecItem>> GetShapeSpecsAsync();
     Task<List<ShapeConditionItem>> GetShapeConditionsAsync();
     Task<EdgeRelationDetailDto?> GetEdgeRelationDetailAsync(string childSlug, string parentSlug);
+    Task<LabMetaResponseDto> GetLabMetaAsync();
 }

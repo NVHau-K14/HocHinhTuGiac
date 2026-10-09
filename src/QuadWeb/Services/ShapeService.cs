@@ -61,4 +61,9 @@ public class ShapeService : IShapeService
     {
         return _shapeRepository.GetEdgeRelationDetailAsync(childSlug, parentSlug);
     }
+
+    public Task<LabMetaResponseDto> GetLabMetaAsync()
+    {
+        return _shapeRepository.GetLabMetaAsync();
+    }
 }

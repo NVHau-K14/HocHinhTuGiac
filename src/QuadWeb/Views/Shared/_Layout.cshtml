@@ -32,25 +32,28 @@
                 <div class="collapse navbar-collapse" id="navContent">
                     <ul class="navbar-nav me-auto mb-2 mb-md-0">
                         <li class="nav-item">
-                            <a class="nav-link" asp-controller="Home" asp-action="Index">Trang chủ</a>
+                            <a class="nav-link @(Context.Request.Path == "/" ? "active" : "")" asp-controller="Home" asp-action="Index">Trang chủ</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="/shapes">Khám phá</a>
+                            <a class="nav-link @(Context.Request.Path.StartsWithSegments("/shapes") ? "active" : "")" href="/shapes">Khám phá</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="/practice">Luyện tập</a>
+                            <a class="nav-link @(Context.Request.Path.StartsWithSegments("/practice") ? "active" : "")" href="/practice">Luyện tập</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="/quiz">Quiz</a>
+                            <a class="nav-link @(Context.Request.Path.StartsWithSegments("/quiz") ? "active" : "")" href="/quiz">Quiz</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="/compare">So sánh</a>
+                            <a class="nav-link @(Context.Request.Path.StartsWithSegments("/compare") ? "active" : "")" href="/compare">So sánh</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="/leaderboard">Bảng điểm lớp</a>
+                            <a class="nav-link @(Context.Request.Path.StartsWithSegments("/lab") ? "active" : "")" href="/lab">Xưởng vẽ</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="/search">Tìm kiếm</a>
+                            <a class="nav-link @(Context.Request.Path.StartsWithSegments("/leaderboard") ? "active" : "")" href="/leaderboard">Bảng điểm lớp</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(Context.Request.Path.StartsWithSegments("/search") ? "active" : "")" href="/search">Tìm kiếm</a>
                         </li>
                     </ul>
                     <div class="d-flex align-items-center gap-2">

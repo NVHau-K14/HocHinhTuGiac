@@ -1,0 +1,221 @@
+@{
+    ViewData["Title"] = "Xưởng vẽ hình học tương tác";
+}
+
+<div class="lab-container py-2">
+    <!-- Tiêu đề trang vở -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
+        <div>
+            <h1 class="mb-0" style="font-size: 2.2rem;">
+                <span style="color: var(--color-margin);">📐</span> Xưởng vẽ hình học tương tác
+            </h1>
+            <p class="text-muted mb-0" style="font-family: 'Patrick Hand', cursive; font-size: 1.2rem;">
+                Kéo thả đỉnh tứ giác, khám phá điều kiện biến hình và đối chiếu công thức trực tiếp trên trang vở
+            </p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn-pen-outline" id="labBtnShare" title="Sao chép liên kết chia sẻ hình hiện tại">
+                🔗 Sao chép liên kết
+            </button>
+        </div>
+    </div>
+
+    <!-- Dải nút chọn hình mẫu (Lấy động từ /api/lab/meta) -->
+    <div class="mb-1">
+        <div class="d-flex align-items-center justify-content-between mb-1">
+            <span class="small fw-bold" style="color: var(--color-ink);">HÌNH MẪU CƠ BẢN:</span>
+            <span class="small text-muted" id="labPresetLoadingText">Đang tải danh sách từ Neo4j...</span>
+        </div>
+        <div class="lab-preset-scroll" id="labPresetScroll" role="tablist" aria-label="Danh sách hình mẫu">
+            <!-- Nút hình mẫu sẽ được nạp bằng JS từ Neo4j -->
+        </div>
+        <div id="labPresetErrorContainer" style="display: none;" class="mt-2"></div>
+    </div>
+
+    <!-- Thanh công cụ (Toolbar) -->
+    <div class="lab-toolbar">
+        <div class="lab-toolbar-group">
+            <!-- Chuyển đổi chế độ -->
+            <div class="d-flex align-items-center gap-2">
+                <span class="small fw-bold text-muted">Chế độ:</span>
+                <div class="lab-mode-toggle" role="group" aria-label="Chế độ làm việc">
+                    <button type="button" class="lab-mode-btn active" id="labModePresetBtn" data-mode="param">
+                        Theo hình mẫu
+                    </button>
+                    <button type="button" class="lab-mode-btn" id="labModeFreeBtn" data-mode="free">
+                        Tự do
+                    </button>
+                </div>
+            </div>
+
+            <!-- Bắt lưới & Bước -->
+            <div class="d-flex align-items-center gap-2">
+                <label class="lab-control-item" title="Bật hoặc tắt chức năng hút điểm vào mắt lưới">
+                    <input type="checkbox" id="labSnapCheck" checked />
+                    <span>Bắt lưới</span>
+                </label>
+                <label class="lab-control-item">
+                    <span>Bước:</span>
+                    <select id="labSnapStepSelect" aria-label="Bước bắt lưới">
+                        <option value="1">1 ô (1 cm)</option>
+                        <option value="0.5">0.5 ô (0.5 cm)</option>
+                        <option value="0">Tự do (tắt hút)</option>
+                    </select>
+                </label>
+            </div>
+        </div>
+
+        <div class="lab-toolbar-group">
+            <!-- Các lớp hiển thị -->
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <label class="lab-control-item">
+                    <input type="checkbox" id="labLayerSides" checked />
+                    <span>Cạnh</span>
+                </label>
+                <label class="lab-control-item">
+                    <input type="checkbox" id="labLayerAngles" checked />
+                    <span>Góc</span>
+                </label>
+                <label class="lab-control-item">
+                    <input type="checkbox" id="labLayerDiagonals" checked />
+                    <span>Đường chéo</span>
+                </label>
+                <label class="lab-control-item">
+                    <input type="checkbox" id="labLayerMarks" checked />
+                    <span>Ký hiệu</span>
+                </label>
+            </div>
+
+            <!-- Các nút thao tác lịch sử -->
+            <div class="d-flex align-items-center gap-1">
+                <button type="button" class="btn-pen-outline py-1 px-2" id="labBtnUndo" title="Hoàn tác (Ctrl+Z)" disabled>
+                    ↶ Hoàn tác
+                </button>
+                <button type="button" class="btn-pen-outline py-1 px-2" id="labBtnRedo" title="Làm lại (Ctrl+Y)" disabled>
+                    ↷ Làm lại
+                </button>
+                <button type="button" class="btn-pen-outline py-1 px-2" id="labBtnReset" title="Đặt lại hình mẫu hiện tại">
+                    ↺ Đặt lại
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bố cục chính: Cột trái Bảng vẽ SVG, Cột phải Sổ ghi chép -->
+    <div class="lab-main-layout">
+        <!-- Cột trái: Khung Bảng vẽ SVG -->
+        <div class="lab-canvas-card">
+            <!-- Nút điều khiển nổi trên bảng vẽ -->
+            <div class="lab-canvas-controls">
+                <button type="button" class="lab-btn-icon" id="labBtnZoomFit" title="Vừa khung nhìn (Đưa hình vào trung tâm)">⛶</button>
+                <button type="button" class="lab-btn-icon" id="labBtnZoomIn" title="Phóng to">+</button>
+                <button type="button" class="lab-btn-icon" id="labBtnZoomOut" title="Thu nhỏ">−</button>
+            </div>
+
+            <div class="lab-canvas-wrapper" id="labCanvasWrapper">
+                <!-- SVG Canvas Toán học -->
+                <svg id="labSvgCanvas" class="lab-canvas-svg" viewBox="0 0 720 480" role="img" aria-label="Bảng vẽ hình học tương tác: Kéo thả các đỉnh để thay đổi hình dạng">
+                    <defs>
+                        <!-- Lưới ô li 24px (tương đương 1 cm ở tỉ lệ 100%) -->
+                        <pattern id="labGrid24" width="24" height="24" patternUnits="userSpaceOnUse">
+                            <rect width="24" height="24" fill="#FFFDF8" />
+                            <path d="M 24 0 L 0 0 0 24" fill="none" stroke="#DCE8F8" stroke-width="1" />
+                        </pattern>
+                        <!-- Lưới phụ 120px (mỗi 5 ô = 5 cm kẻ đậm hơn) -->
+                        <pattern id="labGrid120" width="120" height="120" patternUnits="userSpaceOnUse">
+                            <rect width="120" height="120" fill="url(#labGrid24)" />
+                            <path d="M 120 0 L 0 0 0 120" fill="none" stroke="#B8D3F5" stroke-width="1.5" />
+                        </pattern>
+                    </defs>
+
+                    <!-- Lớp nền kẻ ô li -->
+                    <rect id="labGridRect" width="100%" height="100%" fill="url(#labGrid120)" />
+
+                    <!-- Lớp nhóm toàn bộ đối tượng hình học (được áp dụng biến đổi zoom/pan) -->
+                    <g id="labSceneGroup">
+                        <!-- Hệ trục tọa độ và thước đo -->
+                        <g id="labAxesGroup"></g>
+                        <!-- Lớp tô màu diện tích đa giác -->
+                        <polygon id="labPolyFill" points="" fill="rgba(207, 227, 241, 0.25)" />
+                        <!-- Lớp các đường chéo nét đứt -->
+                        <g id="labDiagonalsGroup"></g>
+                        <!-- Lớp các cạnh chính của tứ giác -->
+                        <g id="labEdgesGroup"></g>
+                        <!-- Lớp ký hiệu hình học (song song, bằng nhau, góc vuông, cung góc) -->
+                        <g id="labMarksGroup"></g>
+                        <!-- Lớp số đo độ dài cạnh và góc -->
+                        <g id="labMeasurementsGroup"></g>
+                        <!-- Lớp 4 đỉnh A, B, C, D kéo thả -->
+                        <g id="labVerticesGroup"></g>
+                    </g>
+                </svg>
+            </div>
+
+            <!-- Vùng hiển thị thông báo dưới bảng vẽ -->
+            <div class="lab-alert-banner" id="labAlertBanner" role="status" aria-live="polite">
+                <span id="labAlertMessage">Sẵn sàng. Kéo thả các đỉnh A, B, C, D để quan sát sự thay đổi.</span>
+                <span class="small text-muted" id="labCoordHint"></span>
+            </div>
+        </div>
+
+        <!-- Cột phải: Panel ghi chép các tab thông số -->
+        <div class="lab-sidebar-card">
+            <!-- Thanh Tab -->
+            <div class="lab-tabs-header" role="tablist">
+                <button type="button" class="lab-tab-btn active" role="tab" data-tab="tabMeasurements" id="tabBtnMeasurements">
+                    📏 Số đo
+                </button>
+                <button type="button" class="lab-tab-btn" role="tab" data-tab="tabFormulas" id="tabBtnFormulas">
+                    ∑ Công thức
+                </button>
+                <button type="button" class="lab-tab-btn" role="tab" data-tab="tabClassify" id="tabBtnClassify">
+                    🌿 Nhận dạng
+                </button>
+                <button type="button" class="lab-tab-btn" role="tab" data-tab="tabChallenges" id="tabBtnChallenges">
+                    🎯 Thử thách
+                </button>
+            </div>
+
+            <!-- Nội dung từng Tab -->
+            <div class="lab-tab-content">
+                <!-- Tab 1: Số đo -->
+                <div class="lab-tab-pane active" id="tabMeasurements">
+                    <div id="labMeasurementsContent">
+                        <div class="text-muted p-3 text-center">Đang khởi tạo thông số hình học...</div>
+                    </div>
+                </div>
+
+                <!-- Tab 2: Công thức -->
+                <div class="lab-tab-pane" id="tabFormulas">
+                    <div id="labFormulasContent">
+                        <div class="text-muted p-3 text-center">Đang tải công thức từ Neo4j...</div>
+                    </div>
+                </div>
+
+                <!-- Tab 3: Nhận dạng -->
+                <div class="lab-tab-pane" id="tabClassify">
+                    <div id="labClassifyContent">
+                        <div class="text-muted p-3 text-center">Đang phân tích loại hình...</div>
+                    </div>
+                </div>
+
+                <!-- Tab 4: Thử thách -->
+                <div class="lab-tab-pane" id="tabChallenges">
+                    <div id="labChallengesContent">
+                        <div class="text-muted p-3 text-center">Đang tạo thử thách biến hình...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Thanh trạng thái đáy tóm tắt quan hệ phả hệ -->
+    <div class="lab-status-bar" id="labStatusBar" role="status" aria-live="polite">
+        <span>✎</span>
+        <span id="labStatusText">Đang tải dữ liệu hình học...</span>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/lab/lab.js" asp-append-version="true"></script>
+}

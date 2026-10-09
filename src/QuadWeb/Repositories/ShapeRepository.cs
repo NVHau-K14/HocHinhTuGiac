@@ -678,4 +678,69 @@ public class ShapeRepository : IShapeRepository
 
         return detail;
     }
+
+    public async Task<LabMetaResponseDto> GetLabMetaAsync()
+    {
+        await using var session = _driverService.CreateSession();
+        var result = new LabMetaResponseDto();
+
+        // 1. Shapes
+        var shapesQuery = @"
+            MATCH (s:Shape)
+            RETURN s.slug AS slug, s.name AS name, s.family AS family, s.sortOrder AS sortOrder
+            ORDER BY s.sortOrder;
+        ";
+        var shapesCursor = await session.RunAsync(shapesQuery);
+        while (await shapesCursor.FetchAsync())
+        {
+            result.Shapes.Add(new ShapeMetaDto
+            {
+                Slug = shapesCursor.Current["slug"].As<string>(),
+                Name = shapesCursor.Current["name"].As<string>(),
+                Family = shapesCursor.Current["family"].As<string>(),
+                SortOrder = shapesCursor.Current["sortOrder"].As<int>()
+            });
+        }
+
+        // 2. ISA
+        var isaQuery = @"
+            MATCH (a:Shape)-[r:IS_A]->(b:Shape)
+            RETURN a.slug AS tu, b.slug AS den, r.condition AS condition, r.conditionShort AS conditionShort
+            ORDER BY a.sortOrder, b.sortOrder;
+        ";
+        var isaCursor = await session.RunAsync(isaQuery);
+        while (await isaCursor.FetchAsync())
+        {
+            var cond = isaCursor.Current["condition"].As<string?>();
+            var condShort = isaCursor.Current["conditionShort"].As<string?>();
+            result.Isa.Add(new IsaMetaDto
+            {
+                Tu = isaCursor.Current["tu"].As<string>(),
+                Den = isaCursor.Current["den"].As<string>(),
+                Condition = cond,
+                ConditionShort = string.IsNullOrWhiteSpace(condShort) ? cond : condShort
+            });
+        }
+
+        // 3. Formulas
+        var formQuery = @"
+            MATCH (s:Shape)-[:HAS_FORMULA]->(f:Formula)
+            RETURN s.slug AS slug, f.id AS id, f.name AS name, f.expression AS expression, f.note AS note
+            ORDER BY s.sortOrder, f.id;
+        ";
+        var formCursor = await session.RunAsync(formQuery);
+        while (await formCursor.FetchAsync())
+        {
+            result.Formulas.Add(new FormulaMetaDto
+            {
+                Slug = formCursor.Current["slug"].As<string>(),
+                Id = formCursor.Current["id"].As<string>(),
+                Name = formCursor.Current["name"].As<string>(),
+                Expression = formCursor.Current["expression"].As<string>(),
+                Note = formCursor.Current["note"].As<string?>()
+            });
+        }
+
+        return result;
+    }
 }

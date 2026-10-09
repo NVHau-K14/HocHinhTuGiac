@@ -975,3 +975,336 @@ p, li {
     padding-right: 10px;
   }
 }
+
+/* ==========================================================================
+   TAB XƯỞNG VẼ (LAB) – KÉO THẢ TỨ GIÁC THEO THỜI GIAN THỰC (v2.4)
+   ========================================================================== */
+.lab-container {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+}
+
+/* Dải nút chọn hình mẫu */
+.lab-preset-scroll {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 6px 4px 10px 4px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.lab-preset-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.lab-preset-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-grid);
+  border-radius: 3px;
+}
+
+.lab-preset-btn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 96px;
+  padding: 8px 10px;
+  background: #FFFFFF;
+  border: 1.5px solid var(--color-grid);
+  border-radius: 4px;
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--color-ink);
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.lab-preset-btn:hover {
+  border-color: var(--color-ink);
+  background: #F4F8FD;
+}
+
+.lab-preset-btn.active {
+  border-color: var(--color-ink);
+  background: #EAF2FC;
+  box-shadow: 2px 2px 0px rgba(31, 58, 147, 0.25);
+  font-weight: 600;
+}
+
+.lab-preset-btn svg {
+  width: 44px;
+  height: 32px;
+}
+
+.lab-preset-label {
+  font-family: 'Patrick Hand', cursive, sans-serif;
+  font-size: 1.05rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+/* Thanh công cụ */
+.lab-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #FFFFFF;
+  border: 1.5px solid var(--color-grid);
+  border-radius: 4px;
+  padding: 8px 12px;
+}
+
+.lab-toolbar-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.lab-mode-toggle {
+  display: inline-flex;
+  border: 1.5px solid var(--color-ink);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.lab-mode-btn {
+  padding: 4px 10px;
+  font-size: 0.9rem;
+  font-family: 'Patrick Hand', cursive, sans-serif;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--color-ink);
+  transition: all 0.15s ease;
+}
+
+.lab-mode-btn.active {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+.lab-control-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.lab-control-item input[type="checkbox"] {
+  accent-color: var(--color-ink);
+  cursor: pointer;
+}
+
+.lab-control-item select {
+  padding: 2px 6px;
+  font-size: 0.85rem;
+  border: 1px solid var(--color-grid);
+  border-radius: 3px;
+  background: #FFF;
+  color: var(--color-pencil);
+}
+
+/* Bố cục chính 2 cột */
+.lab-main-layout {
+  display: grid;
+  grid-template-columns: 7fr 5fr;
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 991px) {
+  .lab-main-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Khung Bảng vẽ SVG */
+.lab-canvas-card {
+  position: relative;
+  background: var(--color-paper);
+  border: 2px solid var(--color-ink);
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 2px 3px 0px rgba(31, 58, 147, 0.15);
+}
+
+.lab-canvas-wrapper {
+  position: relative;
+  width: 100%;
+  height: 480px;
+  background-color: var(--color-paper);
+  overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  .lab-canvas-wrapper {
+    height: 320px;
+  }
+}
+
+.lab-canvas-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  user-select: none;
+  cursor: default;
+}
+
+/* Nút nổi điều khiển bảng vẽ */
+.lab-canvas-controls {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 10;
+}
+
+.lab-btn-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #FFFFFF;
+  border: 1.5px solid var(--color-ink);
+  border-radius: 3px;
+  color: var(--color-ink);
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 1px 1px 0px rgba(31, 58, 147, 0.2);
+  transition: all 0.15s ease;
+}
+
+.lab-btn-icon:hover {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+/* Vùng thông báo lồi / thay đổi dưới bảng vẽ */
+.lab-alert-banner {
+  padding: 8px 12px;
+  background: #FFFFFF;
+  border-top: 1px solid var(--color-grid);
+  font-size: 0.95rem;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.lab-alert-banner.warning {
+  background: #FFF0F2;
+  color: var(--color-margin);
+  font-weight: 500;
+}
+
+.lab-alert-banner.success {
+  background: #F4FAF6;
+  color: var(--color-correct);
+}
+
+.lab-alert-banner.highlight-info {
+  background: #FFFBE6;
+  border-left: 3px solid #E6B800;
+}
+
+/* Panel thông tin bên phải */
+.lab-sidebar-card {
+  display: flex;
+  flex-direction: column;
+  background: #FFFFFF;
+  border: 1.5px solid var(--color-grid);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.lab-tabs-header {
+  display: flex;
+  background: #F4F8FD;
+  border-bottom: 1.5px solid var(--color-grid);
+  overflow-x: auto;
+}
+
+.lab-tab-btn {
+  flex: 1;
+  min-width: 75px;
+  padding: 8px 6px;
+  font-family: 'Patrick Hand', cursive, sans-serif;
+  font-size: 1.15rem;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--color-pencil);
+  cursor: pointer;
+  text-align: center;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.lab-tab-btn:hover {
+  color: var(--color-ink);
+}
+
+.lab-tab-btn.active {
+  color: var(--color-ink);
+  border-bottom-color: var(--color-margin);
+  background: #FFFFFF;
+  font-weight: bold;
+}
+
+.lab-tab-content {
+  padding: 14px;
+  min-height: 420px;
+}
+
+.lab-tab-pane {
+  display: none;
+}
+
+.lab-tab-pane.active {
+  display: block;
+}
+
+/* Thanh trạng thái đáy */
+.lab-status-bar {
+  background: #FFFDEB;
+  border: 1.5px dashed #E6C844;
+  border-radius: 4px;
+  padding: 10px 16px;
+  font-family: 'Patrick Hand', cursive, sans-serif;
+  font-size: 1.25rem;
+  color: var(--color-ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Khối thông báo lỗi */
+.lab-error-card {
+  padding: 24px;
+  background: #FFF5F5;
+  border: 2px dashed var(--color-margin);
+  border-radius: 4px;
+  text-align: center;
+  color: var(--color-margin);
+}
+
+.lab-error-card h4 {
+  color: var(--color-margin);
+  margin-bottom: 8px;
+}
