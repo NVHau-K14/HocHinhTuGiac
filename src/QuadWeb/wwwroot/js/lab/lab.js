@@ -50,7 +50,7 @@
             axessym: false
         },
         zoom: 1,
-        pan: { x: 120, y: 380 }, // Gốc tọa độ dưới-trái
+        pan: { x: 260, y: 280 }, // Căn giữa bảng vẽ
         history: {
             undo: [],
             redo: []
@@ -359,11 +359,6 @@
                 const offset = getLabelOffset(idx);
                 addSvgText(g, svgP.x + offset.x, svgP.y + offset.y, vName, '#1F3A93', '15px', 'middle', 'bold');
 
-                // Nếu đang kéo đỉnh này: vẽ tooltip tọa độ
-                if (state.drag.active && state.drag.vertexIndex === idx) {
-                    renderCoordinateTooltip(g, svgP, mathP, vName);
-                }
-
                 verticesGroup.appendChild(g);
             });
         }
@@ -379,22 +374,6 @@
             case 3: return { x: -14, y: -12 };
             default: return { x: 0, y: -12 };
         }
-    }
-
-    function renderCoordinateTooltip(parent, svgP, mathP, name) {
-        const text = `${name}(${Geometry.formatNumberVi(mathP.x)}; ${Geometry.formatNumberVi(mathP.y)})`;
-        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        rect.setAttribute('x', svgP.x - 36);
-        rect.setAttribute('y', svgP.y - 34);
-        rect.setAttribute('width', '72');
-        rect.setAttribute('height', '22');
-        rect.setAttribute('rx', '3');
-        rect.setAttribute('fill', '#FFE66D');
-        rect.setAttribute('stroke', '#3B3F46');
-        rect.setAttribute('stroke-width', '1');
-        parent.appendChild(rect);
-
-        addSvgText(parent, svgP.x, svgP.y - 19, text, '#1F3A93', '12px', 'middle', '600');
     }
 
     function renderSideMeasurements(parent, mathPts, svgPts) {
@@ -611,8 +590,8 @@
                 }
                 state.vertices = testVertices;
                 if (alertBanner) alertBanner.classList.remove('warning');
-                if (alertMsg) alertMsg.textContent = `Đang kéo ${vName}(${Geometry.formatNumberVi(clampedX)}; ${Geometry.formatNumberVi(clampedY)})`;
-                if (coordHint) coordHint.textContent = `x = ${clampedX} cm, y = ${clampedY} cm`;
+                if (alertMsg) alertMsg.textContent = `Đang di chuyển đỉnh ${vName}`;
+                if (coordHint) coordHint.textContent = '';
                 requestAnimationFrame(renderScene);
                 updateAllPanels();
             } else {
@@ -642,6 +621,10 @@
 
             const alertBanner = document.getElementById('labAlertBanner');
             if (alertBanner) alertBanner.classList.remove('warning');
+            const alertMsg = document.getElementById('labAlertMessage');
+            if (alertMsg) alertMsg.textContent = 'Sẵn sàng. Kéo thả các đỉnh A, B, C, D để quan sát sự thay đổi.';
+            const coordHint = document.getElementById('labCoordHint');
+            if (coordHint) coordHint.textContent = '';
 
             requestAnimationFrame(renderScene);
             updateAllPanels();
@@ -849,24 +832,11 @@
             `;
         } else {
             inputsHtml = `
-                <div class="lab-inputs-container">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <span class="fw-bold" style="font-size: 0.95rem; color: var(--color-ink);">✎ Nhập tọa độ đỉnh (cm)</span>
-                        <button type="button" class="lab-unlock-btn" id="labBtnLockPreset" title="Khóa về tham số hình mẫu">
-                            🔒 Khóa về hình mẫu
-                        </button>
-                    </div>
-                    <div class="lab-input-grid">
-                        ${state.vertices.map((v, i) => `
-                            <div class="lab-input-item">
-                                <label>${VERTEX_NAMES[i]}(x; y)</label>
-                                <div class="d-flex gap-1">
-                                    <input type="text" inputmode="decimal" class="lab-number-input" data-vertex="${i}" data-coord="x" value="${v.x}" title="Tọa độ x" />
-                                    <input type="text" inputmode="decimal" class="lab-number-input" data-vertex="${i}" data-coord="y" value="${v.y}" title="Tọa độ y" />
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="small text-muted">Kéo thả các đỉnh tự do trên bảng vẽ</span>
+                    <button type="button" class="lab-unlock-btn" id="labBtnLockPreset" title="Khóa về tham số hình mẫu">
+                        🔒 Khóa về hình mẫu
+                    </button>
                 </div>
             `;
         }
@@ -956,12 +926,6 @@
             });
         });
 
-        // Ô nhập tọa độ (free mode)
-        document.querySelectorAll('input[data-vertex]').forEach(input => {
-            input.addEventListener('change', handleVertexInputChange);
-            input.addEventListener('keyup', (e) => {
-                if (e.key === 'Enter') handleVertexInputChange(e);
-            });
         });
     }
 
@@ -994,37 +958,6 @@
         if (errElem) errElem.textContent = '';
         state.params = newParams;
         state.vertices = testVertices;
-        renderScene();
-        updateAllPanels();
-        syncUrl();
-    }
-
-    function handleVertexInputChange(e) {
-        const vIdx = parseInt(e.target.getAttribute('data-vertex'), 10);
-        const coord = e.target.getAttribute('data-coord');
-        const rawVal = e.target.value.replace(',', '.');
-        const numVal = parseFloat(rawVal);
-
-        if (isNaN(numVal) || Math.abs(numVal) > 50) {
-            e.target.classList.add('invalid');
-            return;
-        }
-
-        const newVertices = state.vertices.map((v, i) => {
-            if (i === vIdx) {
-                return { ...v, [coord]: numVal };
-            }
-            return { ...v };
-        });
-
-        if (!Geometry.isConvex(...newVertices)) {
-            e.target.classList.add('invalid');
-            return;
-        }
-
-        pushHistory();
-        e.target.classList.remove('invalid');
-        state.vertices = newVertices;
         renderScene();
         updateAllPanels();
         syncUrl();
@@ -1070,9 +1003,9 @@
 
                 if (computed.isArea) {
                     if (computed.isMatchShoelace) {
-                        checkBadgeHtml = `<span class="lab-formula-check-badge match">✓ Khớp diện tích tọa độ (${Geometry.formatNumberVi(computed.shoelaceArea)} cm²)</span>`;
+                        checkBadgeHtml = `<span class="lab-formula-check-badge match">✓ Khớp diện tích thực tế (${Geometry.formatNumberVi(computed.shoelaceArea)} cm²)</span>`;
                     } else {
-                        checkBadgeHtml = `<span class="lab-formula-check-badge mismatch">✗ Lệch diện tích tọa độ</span>`;
+                        checkBadgeHtml = `<span class="lab-formula-check-badge mismatch">✗ Lệch diện tích thực tế</span>`;
                     }
                 }
             } else {
@@ -1786,7 +1719,7 @@
         if (btnZoomFit) {
             btnZoomFit.addEventListener('click', () => {
                 state.zoom = 1;
-                state.pan = { x: 120, y: 380 };
+                state.pan = { x: 260, y: 280 };
                 applyTransform();
                 renderScene();
             });
@@ -1818,41 +1751,7 @@
     function initSvgAxes() {
         const axesGroup = document.getElementById('labAxesGroup');
         if (!axesGroup) return;
-
         axesGroup.innerHTML = '';
-
-        const axisLines = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        axisLines.setAttribute('d', 'M 0 0 L 580 0 M 0 0 L 0 -340');
-        axisLines.setAttribute('stroke', '#3B3F46');
-        axisLines.setAttribute('stroke-width', '1.5');
-        axesGroup.appendChild(axisLines);
-
-        addSvgText(axesGroup, 588, 4, 'x (cm)', '#3B3F46', '12px', 'start');
-        addSvgText(axesGroup, 0, -350, 'y (cm)', '#3B3F46', '12px', 'middle');
-        addSvgText(axesGroup, -10, 15, 'O', '#3B3F46', '12px', 'end');
-
-        for (let i = 5; i <= 20; i += 5) {
-            const px = i * 24;
-            const tickX = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-            tickX.setAttribute('x1', px);
-            tickX.setAttribute('y1', -3);
-            tickX.setAttribute('x2', px);
-            tickX.setAttribute('y2', 3);
-            tickX.setAttribute('stroke', '#3B3F46');
-            axesGroup.appendChild(tickX);
-            addSvgText(axesGroup, px, 16, i.toString(), '#3B3F46', '11px', 'middle');
-
-            const py = -i * 24;
-            const tickY = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-            tickY.setAttribute('x1', -3);
-            tickY.setAttribute('y1', py);
-            tickY.setAttribute('x2', 3);
-            tickY.setAttribute('y2', py);
-            tickY.setAttribute('stroke', '#3B3F46');
-            axesGroup.appendChild(tickY);
-            addSvgText(axesGroup, -8, py + 4, i.toString(), '#3B3F46', '11px', 'end');
-        }
-
         applyTransform();
     }
 
