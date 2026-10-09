@@ -137,7 +137,7 @@
             console.error('Lỗi nạp /api/lab/meta:', err);
             if (loadingText) loadingText.style.display = 'none';
             if (scrollContainer) scrollContainer.innerHTML = '';
-            
+
             if (errorContainer) {
                 errorContainer.style.display = 'block';
                 errorContainer.innerHTML = `
@@ -312,7 +312,7 @@
             }
         }
 
-        // 6. Lớp 4 đỉnh kéo thả (xử lý tay nắm theo Mục 6.2)
+        // 6. Lớp 4 đỉnh kéo thả
         const verticesGroup = document.getElementById('labVerticesGroup');
         if (verticesGroup) {
             verticesGroup.innerHTML = '';
@@ -345,7 +345,7 @@
                 hitCircle.setAttribute('pointer-events', 'all');
                 g.appendChild(hitCircle);
 
-                // Chấm tròn đỉnh (tay nắm có viền vàng dạ quang nổi bật)
+                // Chấm tròn đỉnh
                 const dotCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
                 dotCircle.setAttribute('cx', svgP.x);
                 dotCircle.setAttribute('cy', svgP.y);
@@ -613,7 +613,7 @@
 
             try {
                 if (state.drag.pointerId !== null) svg.releasePointerCapture(state.drag.pointerId);
-            } catch (_) {}
+            } catch (_) { }
 
             state.drag.active = false;
             state.drag.vertexIndex = -1;
@@ -800,7 +800,7 @@
     }
 
     /**
-     * Cập nhật panel tab "Số đo" và ô nhập số hai chiều (Mục 7.2)
+     * Cập nhật panel tab "Số đo" và ô nhập số hai chiều
      */
     function updateMeasurementsPanel() {
         const container = document.getElementById('labMeasurementsContent');
@@ -962,7 +962,7 @@
     }
 
     /**
-     * Cập nhật panel tab "Công thức" với KaTeX thay số & kiểm chứng chéo (Mục 6.5)
+     * Cập nhật panel tab "Công thức" với KaTeX thay số & kiểm chứng chéo
      */
     function updateFormulasPanel() {
         const container = document.getElementById('labFormulasContent');
@@ -1046,14 +1046,15 @@
     }
 
     /**
-     * Cập nhật panel tab "Nhận dạng" và checklist tính chất đúng/sai (Mục 6.3, 7.4)
+     * Cập nhật panel tab "Nhận dạng" và checklist tính chất đúng/sai
      */
     function updateClassifyPanel() {
         const container = document.getElementById('labClassifyContent');
         if (!container || !Geometry || !Classify) return;
 
         const [A, B, C, D] = state.vertices;
-        const curName = Classify.SHAPE_NAMES[state.currentClassification?.mostSpecific] || 'Tứ giác';
+        const specificSlug = state.currentClassification?.mostSpecific || 'tu-giac';
+        const curName = Classify.SHAPE_NAMES[specificSlug] || 'Tứ giác';
         const ancestors = state.currentClassification?.ancestors || [];
         const ancStr = ancestors.length > 0 ? ancestors.map(a => (Classify.SHAPE_NAMES[a] || a).toLowerCase()).join(', ') : '';
 
@@ -1072,14 +1073,10 @@
         const angB = Geometry.computeInteriorAngle(A, B, C);
         const angC = Geometry.computeInteriorAngle(B, C, D);
         const angD = Geometry.computeInteriorAngle(C, D, A);
-        const hasRightAngle = Math.abs(angA - 90) <= Geometry.TOL_ANGLE ||
-                              Math.abs(angB - 90) <= Geometry.TOL_ANGLE ||
-                              Math.abs(angC - 90) <= Geometry.TOL_ANGLE ||
-                              Math.abs(angD - 90) <= Geometry.TOL_ANGLE;
         const allRightAngles = Math.abs(angA - 90) <= Geometry.TOL_ANGLE &&
-                               Math.abs(angB - 90) <= Geometry.TOL_ANGLE &&
-                               Math.abs(angC - 90) <= Geometry.TOL_ANGLE &&
-                               Math.abs(angD - 90) <= Geometry.TOL_ANGLE;
+            Math.abs(angB - 90) <= Geometry.TOL_ANGLE &&
+            Math.abs(angC - 90) <= Geometry.TOL_ANGLE &&
+            Math.abs(angD - 90) <= Geometry.TOL_ANGLE;
 
         const dAB = Geometry.vectorLength(vAB);
         const dBC = Geometry.vectorLength(vBC);
@@ -1201,7 +1198,7 @@
     }
 
     /**
-     * Thực hiện chuyển hóa hình theo quy tắc áp dụng điều kiện (Mục 6.6)
+     * Thực hiện chuyển hóa hình theo quy tắc áp dụng điều kiện
      */
     function applyCondition(fromSlug, toSlug) {
         if (!Transform) return;
@@ -1232,7 +1229,7 @@
     }
 
     /**
-     * Vẽ lớp trục đối xứng thực tế của hình (Mục 7.7)
+     * Vẽ lớp trục đối xứng thực tế của hình
      */
     function renderSymmetryAxes(parent, mathPts, svgPts) {
         if (!Geometry) return;
@@ -1293,7 +1290,7 @@
         });
     }
 
-    // Danh sách các thử thách hình học (Mục 7.5)
+    // Danh sách các thử thách hình học
     const CHALLENGES = [
         {
             id: 'ch_hbh_thoi',
@@ -1384,7 +1381,7 @@
     let challengeHintVisible = false;
 
     /**
-     * Cập nhật panel tab "Thử thách" (Mục 7.5)
+     * Cập nhật panel tab "Thử thách"
      */
     function updateChallengesPanel() {
         const container = document.getElementById('labChallengesContent');
@@ -1526,7 +1523,7 @@
     }
 
     /**
-     * Tải hình vẽ SVG (Mục 7.6)
+     * Tải hình vẽ SVG
      */
     function downloadSvg() {
         const svg = document.getElementById('labSvgCanvas');
@@ -1567,7 +1564,7 @@
     }
 
     /**
-     * Tải hình vẽ PNG nét cao (Mục 7.6)
+     * Tải hình vẽ PNG nét cao
      */
     function downloadPng() {
         const svg = document.getElementById('labSvgCanvas');
