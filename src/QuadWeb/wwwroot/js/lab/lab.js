@@ -925,8 +925,6 @@
                 if (e.key === 'Enter') handleParamInputChange(e);
             });
         });
-
-        });
     }
 
     function handleParamInputChange(e) {
