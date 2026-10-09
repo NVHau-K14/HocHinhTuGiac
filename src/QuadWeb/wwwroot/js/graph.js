@@ -15,7 +15,9 @@ function openGraphModal() {
 
     // Đã có dữ liệu và mạng đã vẽ
     if (networkInstance && graphDataCache) {
-        networkInstance.fit();
+        setTimeout(() => {
+            if (networkInstance) networkInstance.fit({ animation: false });
+        }, 60);
         return;
     }
 
@@ -82,54 +84,87 @@ function loadVisScript(callback) {
 function renderVisNetwork(container, data) {
     if (!container || !window.vis) return;
 
-    // Chuẩn bị dữ liệu Nodes
-    const visNodes = data.nodes.map(n => ({
-        id: n.id,
-        label: n.label,
-        level: 4 - n.level, // Đảo để Tứ giác ở tầng cao nhất (level 4), vuông ở đáy (level 0)
-        shape: 'box',
-        margin: { top: 8, bottom: 8, left: 14, right: 14 },
-        color: {
-            background: n.color || '#FAFCFD',
-            border: '#1F3A93',
-            highlight: {
-                background: '#FFE66D',
-                border: '#D64550'
-            }
-        },
-        borderWidth: 2,
-        font: {
-            face: 'Patrick Hand',
-            size: 19,
-            color: '#1F3A93'
-        },
-        shadow: false
-    }));
+    // Tọa độ đối xứng hình học cho 8 hình (Tứ giác ở đỉnh, Hình vuông ở đáy)
+    // Giúp các nhánh phân lập rõ ràng, không có bất kỳ nhãn nào đè nhau
+    const nodeCoords = {
+        'tu-giac':        { x: 0,    y: 0 },
+        'hinh-thang':     { x: -240, y: 150 },
+        'hinh-dieu':      { x: 240,  y: 150 },
+        'hinh-thang-can': { x: -340, y: 310 },
+        'hinh-binh-hanh': { x: 0,    y: 310 },
+        'hinh-chu-nhat':  { x: -180, y: 470 },
+        'hinh-thoi':      { x: 180,  y: 470 },
+        'hinh-vuong':     { x: 0,    y: 630 }
+    };
 
-    // Chuẩn bị dữ liệu Edges (from: con, to: cha, mũi tên chỉ lên hình cha)
-    const visEdges = data.edges.map(e => ({
-        from: e.from,
-        to: e.to,
-        label: 'IS_A',
-        arrows: {
-            to: { enabled: true, scaleFactor: 0.8 }
-        },
-        color: {
-            color: '#1F3A93',
-            highlight: '#D64550'
-        },
-        font: {
-            face: 'Be Vietnam Pro',
-            size: 11,
-            color: '#D64550',
-            align: 'middle'
-        },
-        smooth: {
-            type: 'cubicBezier',
-            forceDirection: 'vertical',
-            roundness: 0.3
-        }
-    }));
+    // Chuẩn bị dữ liệu Nodes
+    const visNodes = data.nodes.map(n => {
+        const coords = nodeCoords[n.id] || { x: 0, y: n.level * 150 };
+        return {
+            id: n.id,
+            label: n.label,
+            x: coords.x,
+            y: coords.y,
+            shape: 'box',
+            margin: { top: 9, bottom: 9, left: 16, right: 16 },
+            color: {
+                background: n.color || '#FAFCFD',
+                border: '#1F3A93',
+                highlight: {
+                    background: '#FFE66D',
+                    border: '#D64550'
+                }
+            },
+            borderWidth: 2,
+            font: {
+                face: 'Patrick Hand',
+                size: 16, // Cỡ chữ >= 15px
+                color: '#1F3A93'
+            },
+            shadow: false
+        };
+    });
+
+    // Chuẩn bị dữ liệu Edges:
+    // Mặc định "Thêm điều kiện": Mũi tên đi từ hình cha xuống hình con (e.to -> e.from)
+    // Nhãn: "+ điều kiện", nằm ngang, nền dạ quang #FFE66D, cỡ chữ 13px
+    const visEdges = data.edges.map((e, index) => {
+        const condText = e.conditionShort || e.condition || '';
+        const edgeLabel = condText ? `+ ${condText}` : '';
+
+        return {
+            id: `edge_${e.from}_${e.to}`,
+            from: e.to,    // Hình cha (tổng quát hơn, ở trên)
+            to: e.from,    // Hình con (đặc biệt hơn, ở dưới)
+            childSlug: e.from,
+            parentSlug: e.to,
+            label: edgeLabel,
+            arrows: {
+                to: { enabled: true, scaleFactor: 1.0 }
+            },
+            width: 2,
+            selectionWidth: 4,
+            hoverWidth: 3,
+            color: {
+                color: '#1F3A93',
+                highlight: '#D64550',
+                hover: '#D64550'
+            },
+            font: {
+                face: 'Be Vietnam Pro',
+                size: 13,
+                color: '#1F3A93',
+                background: '#FFE66D',
+                strokeWidth: 0,
+                align: 'horizontal' // Nằm ngang, không xoay theo đường cong
+            },
+            smooth: {
+                type: 'cubicBezier',
+                forceDirection: 'vertical',
+                roundness: 0.32
+            }
+        };
+    });
 
     const networkData = {
         nodes: new vis.DataSet(visNodes),
@@ -137,15 +172,6 @@ function renderVisNetwork(container, data) {
     };
 
     const options = {
-        layout: {
-            hierarchical: {
-                enabled: true,
-                direction: 'DU', // Down-Up: Mũi tên từ con hướng lên hình cha
-                sortMethod: 'directed',
-                levelSeparation: 95,
-                nodeSpacing: 140
-            }
-        },
         interaction: {
             dragNodes: true,
             dragView: true,
@@ -157,17 +183,20 @@ function renderVisNetwork(container, data) {
 
     networkInstance = new vis.Network(container, networkData, options);
 
-    // Bấm vào node sẽ chuyển hướng tới trang chi tiết hình
+    // Bấm vào node sẽ chuyển hướng tới bài học hình học
     networkInstance.on('click', function (params) {
         if (params.nodes && params.nodes.length > 0) {
             const clickedId = params.nodes[0];
-            window.location.href = '/shape/' + clickedId;
+            window.location.href = '/shapes/' + clickedId;
         }
     });
 
+    // Fit canvas lấp đầy khung sau khi vẽ xong
     setTimeout(() => {
-        if (networkInstance) networkInstance.fit();
-    }, 200);
+        if (networkInstance) {
+            networkInstance.fit({ animation: false });
+        }
+    }, 150);
 }
 
 // Bắt sự kiện khi DOM tải xong

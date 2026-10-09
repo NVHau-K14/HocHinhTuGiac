@@ -2,16 +2,16 @@
 <div id="graphModal" class="graph-modal-overlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="graphModalTitle">
     <div class="graph-modal-container">
         <!-- Tiêu đề & Nút đóng -->
-        <div class="d-flex justify-content-between align-items-start mb-3 border-bottom pb-2">
+        <div class="d-flex justify-content-between align-items-start mb-2 border-bottom pb-2 gap-2">
             <div>
-                <h2 id="graphModalTitle" class="mb-1" style="font-size: 1.85rem; color: var(--color-ink);">
-                    Sơ đồ quan hệ phân cấp IS_A
+                <h2 id="graphModalTitle" class="mb-1" style="font-size: 1.75rem; color: var(--color-ink);">
+                    Sơ đồ quan hệ phân cấp các hình tứ giác
                 </h2>
-                <p class="small text-muted mb-0">
-                    Mô hình quan hệ kế thừa trên cơ sở dữ liệu Neo4j. Chiều mũi tên <strong>hình con &rarr; hình cha</strong> (hình đặc biệt &rarr; hình tổng quát). Bấm vào hình để mở bài học.
+                <p id="graphModalDesc" class="small text-muted mb-0" style="line-height: 1.5;">
+                    Mũi tên đi từ hình tổng quát đến hình đặc biệt. Chữ trên mũi tên là điều kiện cần thêm. Bấm vào mũi tên để xem vì sao hai hình có quan hệ; bấm vào hình để mở bài học.
                 </p>
             </div>
-            <button type="button" class="btn-pen-outline ms-2" id="btnCloseGraph" aria-label="Đóng sơ đồ">
+            <button type="button" class="btn-pen-outline flex-shrink-0" id="btnCloseGraph" aria-label="Đóng sơ đồ" style="white-space: nowrap; min-width: 125px; padding: 6px 14px;">
                 ✕ Đóng sơ đồ
             </button>
         </div>
@@ -32,8 +32,29 @@
             </div>
         </div>
 
-        <!-- Vùng vẽ canvas đồ thị vis-network -->
-        <div id="visNetworkContainer" class="vis-canvas-wrapper" style="height: 480px; width: 100%; border: 1.5px solid var(--color-grid); border-radius: 6px; background-color: var(--color-paper); position: relative;"></div>
+        <!-- Vùng vẽ canvas đồ thị vis-network (chiều cao clamp theo mục 3.3) -->
+        <div id="visNetworkContainer" class="vis-canvas-wrapper" style="height: clamp(420px, 68vh, 680px); width: 100%; border: 1.5px solid var(--color-grid); border-radius: 6px; background-color: var(--color-paper); position: relative;"></div>
+
+        <!-- Chú thích (Legend) chuẩn mục 3.3 -->
+        <div class="graph-legend d-flex flex-wrap align-items-center gap-2 gap-sm-3 p-2 px-3 mt-2 mb-2" style="background-color: var(--color-paper); border: 1px solid var(--color-grid); border-radius: 4px; font-size: 0.85rem;">
+            <span class="fw-bold" style="color: var(--color-ink);">Chú thích họ hình:</span>
+            <span class="d-inline-flex align-items-center gap-1">
+                <span style="width: 14px; height: 14px; background: #E6DDF5; border: 1.5px solid #1F3A93; border-radius: 2px; display: inline-block;"></span> Họ hình thang
+            </span>
+            <span class="d-inline-flex align-items-center gap-1">
+                <span style="width: 14px; height: 14px; background: #D8F0E4; border: 1.5px solid #1F3A93; border-radius: 2px; display: inline-block;"></span> Họ hình bình hành
+            </span>
+            <span class="d-inline-flex align-items-center gap-1">
+                <span style="width: 14px; height: 14px; background: #FBE0E8; border: 1.5px solid #1F3A93; border-radius: 2px; display: inline-block;"></span> Họ hình diều
+            </span>
+            <span class="d-inline-flex align-items-center gap-1">
+                <span style="width: 14px; height: 14px; background: #FAFCFD; border: 1.5px solid #1F3A93; border-radius: 2px; display: inline-block;"></span> Tứ giác gốc
+            </span>
+            <span class="d-inline-flex align-items-center gap-1 ms-sm-auto">
+                <span style="padding: 1px 6px; background: #FFE66D; color: #1F3A93; font-weight: 600; border-radius: 2px; font-size: 0.8rem; border: 1px solid #e0c840;">+ Điều kiện</span>
+                <span style="color: var(--color-pencil);">Nhãn vàng: điều kiện cần thêm</span>
+            </span>
+        </div>
 
         <!-- Hướng dẫn tương tác & Danh sách phân cấp hỗ trợ Mobile -->
         <div class="mt-3 p-3" style="background-color: #f6fafe; border: 1px dashed var(--color-grid); border-radius: 6px;">

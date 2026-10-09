@@ -14,7 +14,11 @@ public class GraphEdgeDto
 {
     public string From { get; set; } = string.Empty;
     public string To { get; set; } = string.Empty;
-    public string Label { get; set; } = "IS_A";
+    public string Label { get; set; } = string.Empty;
+    public string? Condition { get; set; }
+    public string? ConditionShort { get; set; }
+    public string? FromName { get; set; }
+    public string? ToName { get; set; }
 }
 
 public class GraphDataDto

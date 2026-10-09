@@ -298,20 +298,29 @@ public class ShapeRepository : IShapeRepository
             });
         }
 
-        // 2. Lấy 10 cạnh IS_A
+        // 2. Lấy 10 cạnh IS_A (Mục 5.1 PROMPT_SUA_SO_DO_v2_3)
         var edgesQuery = @"
-            MATCH (child:Shape)-[:IS_A]->(parent:Shape)
-            RETURN child.slug AS from, parent.slug AS to
-            ORDER BY from, to
+            MATCH (a:Shape)-[r:IS_A]->(b:Shape)
+            RETURN a.slug AS tu, a.name AS tenTu, b.slug AS den, b.name AS tenDen,
+                   r.condition AS dieuKien, r.conditionShort AS dieuKienNgan
+            ORDER BY a.sortOrder, b.sortOrder;
         ";
         var edgesCursor = await session.RunAsync(edgesQuery);
         while (await edgesCursor.FetchAsync())
         {
+            var cond = edgesCursor.Current["dieuKien"].As<string?>();
+            var condShort = edgesCursor.Current["dieuKienNgan"].As<string?>();
+            var effectiveCondShort = !string.IsNullOrWhiteSpace(condShort) ? condShort : cond;
+
             result.Edges.Add(new GraphEdgeDto
             {
-                From = edgesCursor.Current["from"].As<string>(),
-                To = edgesCursor.Current["to"].As<string>(),
-                Label = "IS_A"
+                From = edgesCursor.Current["tu"].As<string>(),
+                To = edgesCursor.Current["den"].As<string>(),
+                FromName = edgesCursor.Current["tenTu"].As<string>(),
+                ToName = edgesCursor.Current["tenDen"].As<string>(),
+                Condition = cond,
+                ConditionShort = condShort,
+                Label = !string.IsNullOrWhiteSpace(effectiveCondShort) ? $"+ {effectiveCondShort}" : string.Empty
             });
         }
 
